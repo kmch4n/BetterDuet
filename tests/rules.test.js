@@ -56,14 +56,15 @@ test("GUARD-001: rule applies only to GET main_frame requests", () => {
 });
 
 test("GUARD-004 the SSO retry entry URL is allowed and nothing else is", () => {
-    const allow = rules.find((rule) => rule.action.type === "allow");
+    const allow = rules.find((r) => r.action.type === "allow");
     assert.ok(allow, "allow rule missing");
-    assert.ok(allow.priority > rules.find((rule) => rule.action.type === "redirect").priority);
+    assert.ok(allow.priority > rules.find((r) => r.action.type === "redirect").priority);
     assert.deepEqual(allow.condition.resourceTypes, ["main_frame"]);
     assert.deepEqual(allow.condition.requestMethods, ["get"]);
-    const re = new RegExp(allow.condition.regexFilter);
-    assert.ok(re.test(require("../extension/core.js").SSO_RETRY_URL));
-    assert.ok(!re.test("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01090G.html"));
-    assert.ok(!re.test("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01090G.html?betterduet=sso&x=1"));
-    assert.ok(!re.test("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01002G.html?betterduet=sso"));
+    // urlFilter "|...|" anchors both ends, so it matches exactly this URL.
+    const filter = allow.condition.urlFilter;
+    assert.ok(filter.startsWith("|") && filter.endsWith("|"), "urlFilter must be anchored at both ends");
+    const exact = filter.slice(1, -1);
+    assert.equal(exact, require("../extension/core.js").SSO_RETRY_URL);
+    assert.ok(!/[*^]/.test(exact), "urlFilter must not contain wildcards or separators");
 });
