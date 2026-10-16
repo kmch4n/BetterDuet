@@ -285,3 +285,13 @@ SSO ポータルのタブを `chrome.tabs.duplicate` で複製した。新しい
 ### E-024 複製したタブには sessionStorage が引き継がれる（2026-10-17）
 
 SSO ポータルのタブで `sessionStorage` に値を書いてから、そのタブを複製した。複製先のタブで同じ値を読めた。
+
+### E-025 SSO ポータル経由の GET も DUET の権限だけで付け替えられる（2026-10-17）
+
+ホスト権限を `*://duet.doshisha.ac.jp/*` だけにした検証用の拡張機能に、`declarativeNetRequest` の静的ルール（`/gakusei/html/` への `main_frame` の GET を `/betterduet-landing?from=…` へリダイレクト）を入れて読み込んだ。DUET のセッションが生きている状態で SSO ポータルの「DUET」を押すと、新しいタブは `/betterduet-landing?from=fb/fb010/FB01090G.html` に付け替えられた。送信元が `doshisha.ex-tic.com` でも、そのホストの権限は要らなかった。その後もセッションは生きていた。
+
+### E-026 ツールバーの「戻る」は、操作のあったページでは同じページ内の popstate になる（2026-10-17）
+
+検証用の拡張機能で DUET の `popstate` の監視を登録させない状態にし、DUET の画面で、ページ内を1回クリックしてから Chrome のツールバーの「戻る」を実際のマウス操作で押した。前のページには移らず、同じページで `popstate` だけが起きた。
+
+ページ内をまだ一度も操作していない状態で「戻る」を押したときは、2回とも何も起きなかった（遷移も `popstate` もない）。ただし、そのとき Chrome のウィンドウが前面になかった可能性があり、Chrome の「操作なしに追加された履歴を飛ばす」仕組みの影響かどうかは切り分けられていない（未検証）。また、DUET の画面で一度クリックすると、その後スクリプトの送信で開いた画面でも `navigator.userActivation.hasBeenActive` が true のままだった。
