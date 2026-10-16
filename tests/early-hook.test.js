@@ -115,13 +115,27 @@ test("CORE-006: the inlined logout pattern equals BetterDuetCore.LOGOUT_PATTERN"
     assert.equal(Core.LOGOUT_PATTERN.flags, "i");
 });
 
-test("CORE-006: an XHR with the logout body posts xhr:logout and still sends", () => {
+test("CORE-006: a logout XHR waits for logout:ack, other XHRs send at once", () => {
     const env = makeEnv();
     const xhr = new env.sandbox.XMLHttpRequest();
     xhr.send("unloadform%3A__link_clicked__=unloadform%3AcloseWindow&x=1");
     xhr.send("form1%3Atoken=abc");
-    assert.equal(env.sent("xhr:logout").length, 1);
+    const [logout] = env.sent("xhr:logout");
+    assert.ok(logout, "xhr:logout was not posted");
+    assert.deepEqual(env.xhrBodies, ["form1%3Atoken=abc"]);
+    env.deliver("logout:ack", { reqId: logout.reqId });
     assert.equal(env.xhrBodies.length, 2);
+    env.flush(1000);
+    assert.equal(env.xhrBodies.length, 2, "the timeout must not send the XHR twice");
+});
+
+test("CORE-006: a logout XHR is sent after 500 ms even without an ack", () => {
+    const env = makeEnv();
+    const xhr = new env.sandbox.XMLHttpRequest();
+    xhr.send("unloadform%3A__link_clicked__=unloadform%3AcloseWindow");
+    assert.equal((env.xhrBodies || []).length, 0);
+    env.flush(500);
+    assert.equal(env.xhrBodies.length, 1);
 });
 
 test("CORE-004: submit() on a DUET form is held until submit:execute", () => {

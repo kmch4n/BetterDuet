@@ -13,12 +13,15 @@
     // How long an issued submit suppresses popstate (a download never navigates away).
     const ISSUED_WINDOW_MS = 30000;
     const CLOSE_WINDOW_LINK = "unloadform:closeWindow";
+    // DUET closes the tab as soon as the logout XHR answers, so the XHR waits for the SW to record it.
+    const LOGOUT_WAIT_MS = 500;
 
     let enabled = true;
     let nonce = null;
     let reentry = false;
     let nextReqId = 1;
     const pending = new Map();
+    const logoutWaiters = new Map();
     let submitIssued = false;
 
     const nativeAdd = window.addEventListener;
@@ -223,6 +226,11 @@
                     restore(entry);
                 }
                 break;
+            case "logout:ack":
+                if (logoutWaiters.has(String(data.reqId))) {
+                    logoutWaiters.get(String(data.reqId))();
+                }
+                break;
             case "nav:prepare":
                 // DUET's _doAction3 clears forceClose before it submits; plan submits skip that path.
                 window.forceClose = false;
@@ -281,13 +289,37 @@
 
     // ---- Logout (CORE-006) ----
 
-    XMLHttpRequest.prototype.send = function send(body) {
-        try {
-            if (typeof body === "string" && LOGOUT_PATTERN.test(body)) {
-                post("xhr:logout", {});
+    function announceLogout(then) {
+        const id = String(nextReqId++);
+        let done = false;
+        const finish = () => {
+            if (done) {
+                return;
             }
+            done = true;
+            logoutWaiters.delete(id);
+            then();
+        };
+        logoutWaiters.set(id, finish);
+        setTimeout(finish, LOGOUT_WAIT_MS);
+        post("xhr:logout", { reqId: id });
+        if (!enabled || !nonce) {
+            finish();
+        }
+    }
+
+    XMLHttpRequest.prototype.send = function send(body) {
+        let isLogout = false;
+        try {
+            isLogout = typeof body === "string" && LOGOUT_PATTERN.test(body);
         } catch (e) {
             // Never break DUET's request.
+        }
+        if (isLogout) {
+            const xhr = this;
+            const args = arguments;
+            announceLogout(() => nativeSend.apply(xhr, args));
+            return undefined;
         }
         return nativeSend.apply(this, arguments);
     };

@@ -16,6 +16,7 @@
 
     const KEY_TAB = "betterduet:tab";
     const KEY_NOTICE = "betterduet:notice";
+    const KEY_SSO_TRIED = "betterduet:ssoTried";
 
     // Hide DUET's 404 body until the panel replaces it.
     try {
@@ -82,6 +83,16 @@
             const options = { onNotice: showNotice };
             let request;
             if (target.kind === "entry") {
+                // After a DUET logout the Shibboleth session is gone too (E-027). A fetch cannot follow the
+                // cross-site SSO redirect, so let DUET's own entry page do the round trip once (GUARD-004).
+                options.onNotice = (id) => {
+                    if (id === "GUARD-4" && !session.get(KEY_SSO_TRIED)) {
+                        session.set(KEY_SSO_TRIED, "1");
+                        location.replace(C.SSO_RETRY_URL);
+                        return;
+                    }
+                    showNotice(id);
+                };
                 request = { type: "open:request", screenId: C.HOME, reason: "entry" };
             } else {
                 if (target.hadDetail) {

@@ -18,6 +18,7 @@
     const KEY_PENDING_BACK = "betterduet:pendingBack";
     const KEY_NOTICE = "betterduet:notice";
     const KEY_REVIVED = "betterduet:revived";
+    const KEY_SSO_TRIED = "betterduet:ssoTried";
     const ALIVE_CHECK_MS = 5000;
 
     const nonce = crypto.randomUUID();
@@ -164,6 +165,7 @@
             if (isEntryPage()) {
                 const reply = await Nav.send({ type: "page:entry", forms: Nav.collectForms(document) });
                 session.remove(KEY_REVIVED);
+                session.remove(KEY_SSO_TRIED);
                 settleGen(reply.gen);
                 return;
             }
@@ -179,6 +181,7 @@
                 settleGen(reply.gen);
                 session.remove(KEY_PENDING_BACK);
                 session.remove(KEY_REVIVED);
+                session.remove(KEY_SSO_TRIED);
                 const record = C.applyLoad(session.getJson(KEY_TAB), {
                     tabId: ownTabId,
                     screenId: screenId,
@@ -274,8 +277,10 @@
         }
     }
 
-    function onLogout() {
-        Nav.send({ type: "xhr:logout" }).catch(() => {});
+    function onLogout(data) {
+        Nav.send({ type: "xhr:logout" })
+            .catch(() => {})
+            .finally(() => post("logout:ack", { reqId: data.reqId }));
     }
 
     window.addEventListener("message", (event) => {
@@ -294,7 +299,7 @@
                 onBack();
                 break;
             case "xhr:logout":
-                onLogout();
+                onLogout(data);
                 break;
             default:
                 break;

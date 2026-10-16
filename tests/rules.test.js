@@ -19,9 +19,11 @@ function substitute(url) {
     return rule.action.redirect.regexSubstitution.replace("\\1", match[1]);
 }
 
-test("GUARD-001: rules.json contains exactly one redirect rule", () => {
-    assert.equal(rules.length, 1);
+test("GUARD-001: rules.json contains one redirect rule and one SSO-retry allow rule", () => {
+    assert.equal(rules.length, 2);
     assert.equal(rule.action.type, "redirect");
+    assert.equal(rules.filter((r) => r.action.type === "redirect").length, 1);
+    assert.equal(rules.filter((r) => r.action.type === "allow").length, 1);
 });
 
 test("GUARD-001: regexFilter matches /gakusei/html pages and the entry page", () => {
@@ -51,4 +53,17 @@ test("GUARD-001: substitution redirects to the landing page with the from parame
 test("GUARD-001: rule applies only to GET main_frame requests", () => {
     assert.deepEqual(rule.condition.requestMethods, ["get"]);
     assert.deepEqual(rule.condition.resourceTypes, ["main_frame"]);
+});
+
+test("GUARD-004 the SSO retry entry URL is allowed and nothing else is", () => {
+    const allow = rules.find((rule) => rule.action.type === "allow");
+    assert.ok(allow, "allow rule missing");
+    assert.ok(allow.priority > rules.find((rule) => rule.action.type === "redirect").priority);
+    assert.deepEqual(allow.condition.resourceTypes, ["main_frame"]);
+    assert.deepEqual(allow.condition.requestMethods, ["get"]);
+    const re = new RegExp(allow.condition.regexFilter);
+    assert.ok(re.test(require("../extension/core.js").SSO_RETRY_URL));
+    assert.ok(!re.test("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01090G.html"));
+    assert.ok(!re.test("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01090G.html?betterduet=sso&x=1"));
+    assert.ok(!re.test("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01002G.html?betterduet=sso"));
 });

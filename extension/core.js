@@ -48,6 +48,8 @@ const BetterDuetCore = (() => {
     const ENTRY_SCREEN = "FB01090G";
     const LANDING_PATH = "/betterduet-landing";
     const SSO_PORTAL_URL = "https://doshisha.ex-tic.com/idm/user/portal/";
+    // The DNR allow rule lets exactly this entry URL through so DUET can run its own SSO round trip (GUARD-004).
+    const SSO_RETRY_URL = "https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01090G.html?betterduet=sso";
 
     const LOGOUT_PATTERN = /unloadform(?::|%3A)__link_clicked__=unloadform(?::|%3A)closeWindow/i;
 
@@ -307,6 +309,7 @@ const BetterDuetCore = (() => {
         ENTRY_SCREEN,
         LANDING_PATH,
         SSO_PORTAL_URL,
+        SSO_RETRY_URL,
         LOGOUT_PATTERN,
         NOTICES,
         NAV_TIMEOUT_MS,
