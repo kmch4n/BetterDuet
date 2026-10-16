@@ -1,0 +1,15 @@
+# Data
+_metadata
+data/
+release/
+
+# Local AI state
+.claude/settings.local.json
+
+# Mac OS
+.DS_Store
+
+# Memos
+note/
+idea.md
+TODO.md
