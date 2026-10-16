@@ -9,7 +9,7 @@ BetterDuet は仕様駆動開発（Spec-Driven Development）で作ります。�
 | ファイル | 内容 |
 |---|---|
 | [product.md](product.md) | 目的、対象範囲、やらないこと、全機能に共通する原則 |
-| [duet-platform.md](duet-platform.md) | DUET 側の仕組みについて、実際に確かめた事実 |
+| [duet-platform.md](duet-platform.md) | DUET の挙動の仕様書。確かめた事実と実験の記録を書き足していく |
 | `features/*.md` | 機能ごとの要件。1機能1ファイル |
 
 ## 開発の流れ

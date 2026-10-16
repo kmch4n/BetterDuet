@@ -15,7 +15,7 @@
 - When code and spec disagree, the spec wins. Either fix the code, or propose a spec change first and wait for approval.
 - Reference requirement IDs (for example `TAB-001`) in tests and in pull request descriptions. Every `Accepted` requirement needs at least one test or a documented manual check.
 - After implementing, update the requirement's status to `Implemented` and record how it was verified, in the same change.
-- Record verified facts about DUET in `docs/spec/duet-platform.md` with the verification date. Mark anything unverified as such.
+- `docs/spec/duet-platform.md` is the living spec of DUET's own behavior. Whenever you observe DUET behavior (intended or not), add an entry to its observation log (`E-NNN`, date, steps, result) and update the body. Mark anything unverified as such.
 
 ## Architecture
 
