@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 脆弱性の報告
+    url: https://github.com/kmch4n/BetterDuet/security/advisories/new
+    about: 脆弱性は公開の Issue ではなく、こちらから非公開で報告してください。
+  - name: 仕様書
+    url: https://github.com/kmch4n/BetterDuet/blob/main/docs/spec/README.md
+    about: すべての機能の仕様と、決まっていないことをまとめています。

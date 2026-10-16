@@ -1,0 +1,33 @@
+name: 機能の要望
+description: 新しい機能や、今ある機能の改善を提案する
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提案ありがとうございます。投稿の前に、同じ内容の Issue がないか検索してください。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 困っていること
+      description: いま DUET を使っていて、何が不便かを書いてください。
+      placeholder: 成績を見ながら登録科目一覧を確認したいが、画面を行き来するしかない
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案する内容
+      description: どうなっていれば解決するかを書いてください。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: ほかに考えた方法
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: 実装への参加
+      options:
+        - label: 自分で実装してみたい

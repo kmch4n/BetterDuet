@@ -1,0 +1,62 @@
+name: 不具合の報告
+description: 機能が動かない、ログアウトされる、表示がおかしいなどの問題を報告する
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        報告ありがとうございます。投稿の前に、同じ内容の Issue がないか検索してください。
+
+        **DUET の画面には氏名・学生番号・成績・履修科目などが含まれます。スクリーンショットや HTML を貼るときは、必ず該当箇所を隠してください。**
+
+        脆弱性は、この Issue ではなく [非公開の報告](https://github.com/kmch4n/BetterDuet/security/advisories/new) から知らせてください。
+  - type: textarea
+    id: summary
+    attributes:
+      label: 起きていること
+      description: どのような問題が起きているかを書いてください。
+      placeholder: 2つ目のタブで成績を開いたあと、1つ目のタブでメニューを押すとログアウトされる
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現の手順
+      description: 開いていたタブの数と、それぞれのタブで表示していた画面も書いてください。
+      placeholder: |
+        1. タブ A でホームを開く
+        2. タブ A のメニュー「成績」を新しいタブで開く
+        3. タブ A に戻り、メニュー「お知らせ」を押す
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+      placeholder: タブ A に「お知らせ」が表示される
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: 起きた画面
+      description: 画面上部のパンくずリストに表示される名前を書いてください。
+      placeholder: ホーム > 成績
+  - type: input
+    id: version
+    attributes:
+      label: BetterDuet のバージョン
+      description: "`chrome://extensions/` に表示されています。"
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: ブラウザと OS
+      placeholder: Chrome 141 / Windows 11
+  - type: textarea
+    id: extra
+    attributes:
+      label: 補足
+      description: コンソールのエラー、スクリーンショット（個人情報は隠す）など。
