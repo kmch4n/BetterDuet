@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "BetterDuet Probe",
+    "version": "0.0.1",
+    "description": "Experimental probe for verifying DUET behavior. Not for distribution.",
+    "permissions": ["webRequest", "webNavigation", "declarativeNetRequestWithHostAccess", "declarativeNetRequestFeedback", "storage", "cookies", "tabs"],
+    "host_permissions": ["*://duet.doshisha.ac.jp/*", "*://doshisha.ex-tic.com/*"],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["*://duet.doshisha.ac.jp/*", "*://doshisha.ex-tic.com/*"],
+            "js": ["bridge.js"],
+            "run_at": "document_start"
+        },
+        {
+            "matches": ["*://duet.doshisha.ac.jp/*"],
+            "js": ["main-world.js"],
+            "run_at": "document_start",
+            "world": "MAIN"
+        }
+    ]
+}
