@@ -52,7 +52,7 @@ BetterDuet の設計の前提になる、DUET 側の挙動をまとめた文書�
 
 | 画面 | 画面 ID | サイドメニューのアクション |
 |---|---|---|
-| ホーム | `FB02001G` | （ヘッダーの「ホーム」） |
+| ホーム | `FB02001G` | `unloadform:goHome`（ヘッダーの「ホーム」。E-020） |
 | 登録科目一覧 | `FB17001G` | `menuform:goFb17001g` |
 | 試験一覧 | `FB11001G` | `menuform:goFb11001g` |
 | レポート一覧 | `FB11501G` | `menuform:goFb11501g` |
@@ -73,6 +73,10 @@ BetterDuet の設計の前提になる、DUET 側の挙動をまとめた文書�
 受付期間外で `li.disabled` になっている項目（先行登録、一般登録、履修中止、先行登録削除、免許資格課程仮登録、免許資格課程本登録、教職免許申請希望）は、期間中に画面 ID とアクションを確かめる必要があります（未検証）。
 
 どの画面にも共通してあるフォームは `unloadform`、`member`、`menuform` です。`form1` は画面ごとに中身が違います。
+
+### ログアウト
+
+ヘッダーの「LOGOUT」は `ssoCloseWindowWithHakiCheck` を呼びます（E-021）。`common.js` の処理では、確認ダイアログで「OK」を押すと、`unloadform:closeWindow` を Ajax（XHR）で POST し、応答を待ってウィンドウを閉じます。Ajax が失敗したときは、同じアクションをフォームで送信してから閉じます。ログアウトで Shibboleth のログインも終わるかは未検証です。
 
 ### 画面から開くほかのページ
 
@@ -261,3 +265,11 @@ DUET のタブを `chrome.tabs.discard` で破棄した。タブ ID が変わっ
 ### E-019 メニュー画面での goBackN（2026-10-17）
 
 「推奨環境」の画面のフォームで `unloadform:goBackN` を `fetch` で POST した。`modoriId` は空だった。返ってきたのは「推奨環境」の画面で、エラーにはならなかった。
+
+### E-020 ヘッダーの「ホーム」は unloadform:goHome（2026-10-17）
+
+「推奨環境」の画面で、`#goHome` が `unloadform` の中にあり、`onclick` が `unloadform:goHome` を送ることを確かめた。同じ内容を `fetch` で POST すると、ホームが返った。ホームのフォームの `action` は `FB02001G.html` だった。
+
+### E-021 ログアウトボタンの処理（2026-10-17）
+
+ヘッダーの「LOGOUT」（`member` フォームの中の `input`）の `onclick` が `ssoCloseWindowWithHakiCheck` を呼ぶことを確かめた。ボタンは押していない。押したときの処理は `common.js` の `ssoCloseWindow` を読んで確かめた。

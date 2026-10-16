@@ -2,13 +2,14 @@
 
 BetterDuet は仕様駆動開発（Spec-Driven Development）で作ります。このフォルダの文書が、拡張機能がどう動くべきかを決める唯一の正本です。コードはこの仕様に従って書き、仕様にない動作はコードの側で勝手に決めません。
 
-初めて読む人は、この README と [product.md](product.md) を通読してください。[duet-platform.md](duet-platform.md) と `features/` 以下は、該当する作業をするときに引けば十分です。
+初めて読む人は、この README、[product.md](product.md)、[architecture.md](architecture.md) を通読してください。[duet-platform.md](duet-platform.md) と `features/` 以下は、該当する作業をするときに引けば十分です。
 
 ## 文書の構成
 
 | ファイル | 内容 |
 |---|---|
 | [product.md](product.md) | 目的、対象範囲、やらないこと、全機能に共通する原則 |
+| [architecture.md](architecture.md) | 用語、拡張機能の部品、全機能に共通する要件（CORE）、お知らせ帯（NOTICE） |
 | [duet-platform.md](duet-platform.md) | DUET の挙動の仕様書。確かめた事実と実験の記録を書き足していく |
 | `features/*.md` | 機能ごとの要件。1機能1ファイル |
 
