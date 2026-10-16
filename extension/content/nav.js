@@ -211,7 +211,7 @@
     /**
      * Acts on a service worker reply.
      * @param {{ type: string }} reply
-     * @param {{ onNotice?: (id: string) => void, onRevived?: (jobId: string) => void }} [options]
+     * @param {{ onNotice?: (id: string) => void, onRevived?: (jobId: string) => void, onBeforePlan?: () => void }} [options]
      * @param {string} [revivedJobId] set internally when the reply follows a revival
      * @returns {Promise<"submitted"|"notice"|"stale"|"error"|"ignored">}
      */
@@ -234,10 +234,18 @@
                         opts.onRevived(revivedJobId);
                     }
                 }
+                if (typeof opts.onBeforePlan === "function") {
+                    opts.onBeforePlan();
+                }
                 submitPlan(reply.plan);
                 return "submitted";
             case "revive": {
                 const next = await revive(reply.jobId);
+                if (next && next.type === "stale") {
+                    // The revive job is gone (timeout, tab race): never leave the page waiting.
+                    notify("GUARD-3");
+                    return "error";
+                }
                 return handleReply(next, opts, reply.jobId);
             }
             case "notice":

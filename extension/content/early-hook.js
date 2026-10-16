@@ -8,13 +8,18 @@
     const LOGOUT_PATTERN = /unloadform(?::|%3A)__link_clicked__=unloadform(?::|%3A)closeWindow/i;
     const ACK_TIMEOUT_MS = 1500;
     // After page.js acknowledges a request it may legitimately wait for the service worker queue.
+    // If it still has not answered, the request is restored (never sent natively: the page may be stale).
     const SETTLE_TIMEOUT_MS = 60000;
+    // How long an issued submit suppresses popstate (a download never navigates away).
+    const ISSUED_WINDOW_MS = 30000;
+    const CLOSE_WINDOW_LINK = "unloadform:closeWindow";
 
     let enabled = true;
     let nonce = null;
     let reentry = false;
     let nextReqId = 1;
     const pending = new Map();
+    let submitIssued = false;
 
     const nativeAdd = window.addEventListener;
     const nativeSubmit = HTMLFormElement.prototype.submit;
@@ -38,6 +43,16 @@
     }
 
     // ---- Submit hook (CORE-004) ----
+
+    // DUET's ssoCloseWindow falls back to this form submit when its logout XHR fails.
+    // It must reach the server natively; the logout is recorded instead.
+    function isCloseWindowSubmit(form) {
+        if (!form || form.id !== "unloadform") {
+            return false;
+        }
+        const linkEl = form.elements ? form.elements["unloadform:__link_clicked__"] : null;
+        return !!linkEl && String(linkEl.value) === CLOSE_WINDOW_LINK;
+    }
 
     function intercept(form, isEvent, submitter) {
         const formId = form.id;
@@ -63,6 +78,10 @@
 
     HTMLFormElement.prototype.submit = function submit() {
         if (enabled && isDuetForm(this.id)) {
+            if (isCloseWindowSubmit(this)) {
+                post("xhr:logout", {});
+                return nativeSubmit.apply(this, arguments);
+            }
             intercept(this, false, null);
             return undefined;
         }
@@ -76,6 +95,10 @@
             if (!enabled || reentry || !form || !isDuetForm(form.id)) {
                 return;
             }
+            if (isCloseWindowSubmit(form)) {
+                post("xhr:logout", {});
+                return;
+            }
             event.preventDefault();
             // Page handlers run when the request is replayed through requestSubmit().
             event.stopImmediatePropagation();
@@ -85,6 +108,10 @@
     );
 
     function perform(entry, rewrite) {
+        submitIssued = true;
+        setTimeout(() => {
+            submitIssued = false;
+        }, ISSUED_WINDOW_MS);
         const form = entry.form;
         const linkEl = form.elements ? form.elements[entry.formId + ":__link_clicked__"] : null;
         if (linkEl && entry.linkValue !== null) {
@@ -149,9 +176,17 @@
         if (!entry) {
             return;
         }
-        // The extension did not answer (gone or broken): behave like plain DUET from now on.
+        // page.js never acknowledged (gone or broken): behave like plain DUET from now on.
         enabled = false;
         perform(entry, null);
+    }
+
+    function onSettleTimeout(reqId) {
+        // page.js acknowledged but never settled the request: undo DUET's lock and keep the hook on.
+        const entry = take(reqId);
+        if (entry) {
+            restore(entry);
+        }
     }
 
     // ---- Channel from the ISOLATED world ----
@@ -173,7 +208,7 @@
                 entry = pending.get(String(data.reqId));
                 if (entry) {
                     clearTimeout(entry.timer);
-                    entry.timer = setTimeout(() => onTimeout(data.reqId), SETTLE_TIMEOUT_MS);
+                    entry.timer = setTimeout(() => onSettleTimeout(data.reqId), SETTLE_TIMEOUT_MS);
                 }
                 break;
             case "submit:execute":
@@ -187,6 +222,10 @@
                 if (entry) {
                     restore(entry);
                 }
+                break;
+            case "nav:prepare":
+                // DUET's _doAction3 clears forceClose before it submits; plan submits skip that path.
+                window.forceClose = false;
                 break;
             case "hook:disable":
                 enabled = false;
@@ -220,6 +259,10 @@
             return;
         }
         history.pushState("push", null, null);
+        // Mirrors DUET's own flag in global.js: no back while a submit is pending in this document.
+        if (pending.size > 0 || submitIssued) {
+            return;
+        }
         post("back:requested", {});
     });
 

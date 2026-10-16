@@ -63,11 +63,11 @@ function isPlainObject(value) {
 // ---------------------------------------------------------------------------
 
 let state = initialState();
-let active = null; // { jobId, tabId, kind, deadline }, mirrors state.job
-let activeMeta = { target: null, reply: null }; // in-memory only: revive target and the waiting requester
+let active = null; // { jobId, tabId, docId, target, kind, deadline }, mirrors state.job
+let activeMeta = { target: null, reply: null }; // in-memory only: the waiting requester (the revive target lives in active.target)
 let activeTimer = null;
 let writeChain = Promise.resolve();
-const queue = []; // { tabId, reply, run }
+const queue = []; // { tabId, docId, reply, run }
 const pendingTargets = new Map(); // tabId -> screenId opened by a menu action, until that job ends
 let pumping = false;
 
@@ -121,7 +121,14 @@ function armTimer() {
 }
 
 async function startJob(kind, tabId, meta) {
-    active = { jobId: crypto.randomUUID(), tabId, kind, deadline: Date.now() + jobDuration(kind) };
+    active = {
+        jobId: crypto.randomUUID(),
+        tabId,
+        docId: meta && meta.docId ? meta.docId : null,
+        target: meta && meta.target ? meta.target : null,
+        kind,
+        deadline: Date.now() + jobDuration(kind),
+    };
     activeMeta = { target: null, reply: null, ...meta };
     armTimer();
     await updateState((s) => {
@@ -168,7 +175,8 @@ async function expireActive() {
         activeMeta.reply(noticeReply("GUARD-3"));
     }
     // Downloads leave the server view untouched (E-022); everything else is now unknown.
-    await endActive(job.kind !== "download");
+    // A nav timeout leaves `latest` alone (CORE-003); GUARD-003 recovers if it is wrong.
+    await endActive(job.kind === "revive");
 }
 
 async function onDeadline(jobId) {
@@ -198,8 +206,8 @@ async function endNavJobOf(tabId, clearLatest) {
 // Queue
 // ---------------------------------------------------------------------------
 
-function enqueue(tabId, reply, run) {
-    queue.push({ tabId, reply, run });
+function enqueue(tabId, docId, reply, run) {
+    queue.push({ tabId, docId, reply, run });
     void pump();
 }
 
@@ -226,10 +234,15 @@ async function pump() {
     }
 }
 
-function dropQueuedFor(tabId) {
+/** Drops a tab's queued items; with keepDocId, only those that belong to another document. */
+function dropQueuedFor(tabId, keepDocId) {
     for (let i = queue.length - 1; i >= 0; i--) {
-        if (queue[i].tabId === tabId) {
-            const [item] = queue.splice(i, 1);
+        const item = queue[i];
+        if (item.tabId !== tabId) {
+            continue;
+        }
+        if (keepDocId === undefined || (item.docId && item.docId !== keepDocId)) {
+            queue.splice(i, 1);
             item.reply({ type: "stale" });
         }
     }
@@ -239,13 +252,13 @@ function dropQueuedFor(tabId) {
 // Decisions that run when a request reaches the head of the queue
 // ---------------------------------------------------------------------------
 
-async function replyRevive(tabId, reply, targetScreenId) {
+async function replyRevive(tabId, docId, reply, targetScreenId) {
     const target = typeof targetScreenId === "string" && targetScreenId ? targetScreenId : C.HOME;
-    const jobId = await startJob("revive", tabId, { target, reply });
+    const jobId = await startJob("revive", tabId, { target, reply, docId });
     reply({ type: "revive", jobId, targetScreenId: target });
 }
 
-async function runSubmit(tabId, msg, reply) {
+async function runSubmit(tabId, docId, msg, reply) {
     const latest = state.latest;
     let decision = C.decideSubmit({
         pageGen: msg.pageGen,
@@ -276,7 +289,7 @@ async function runSubmit(tabId, msg, reply) {
 
     const actionName = String(msg.actionName == null ? "" : msg.actionName);
     const kind = C.isDownloadAction(actionName) ? "download" : "nav";
-    const jobId = await startJob(kind, tabId, {});
+    const jobId = await startJob(kind, tabId, { docId });
     const menuTarget = C.screenIdFromActionName(actionName);
     if (menuTarget) {
         pendingTargets.set(tabId, menuTarget);
@@ -288,7 +301,7 @@ async function runSubmit(tabId, msg, reply) {
     }
 }
 
-async function runOpen(tabId, msg, reply) {
+async function runOpen(tabId, docId, msg, reply) {
     const isEntry = msg.reason === "entry";
     if (isEntry && state.loggedOut) {
         await updateState((s) => {
@@ -302,12 +315,13 @@ async function runOpen(tabId, msg, reply) {
     if (state.latest) {
         const plan = C.buildOpenPlan(isEntry ? C.HOME : msg.screenId, state.latest.forms);
         if (plan) {
-            const jobId = await startJob("nav", tabId, {});
+            const jobId = await startJob("nav", tabId, { docId });
+            pendingTargets.set(tabId, isEntry ? C.HOME : msg.screenId);
             reply({ type: "plan", jobId, plan });
             return;
         }
     }
-    await replyRevive(tabId, reply, isEntry ? C.NOTICES_SCREEN : msg.screenId);
+    await replyRevive(tabId, docId, reply, isEntry ? C.NOTICES_SCREEN : msg.screenId);
 }
 
 // ---------------------------------------------------------------------------
@@ -319,11 +333,12 @@ async function onPageLoaded(msg, tabId, reply) {
         reply({ type: "error", message: "Invalid page:loaded payload" });
         return;
     }
+    let gen = 0;
     await updateState((s) => {
-        s.gen += 1;
-        s.latest = { gen: s.gen, tabId, screenId: msg.screenId, forms: msg.forms };
+        gen = ++s.gen;
+        s.latest = { gen, tabId, screenId: msg.screenId, forms: msg.forms };
     });
-    reply({ type: "loaded", gen: state.gen });
+    reply({ type: "loaded", gen });
     await endNavJobOf(tabId, false);
 }
 
@@ -332,12 +347,13 @@ async function onPageEntry(msg, tabId, reply) {
         reply({ type: "error", message: "Invalid page:entry payload" });
         return;
     }
+    let gen = 0;
     await updateState((s) => {
         s.loggedOut = false;
-        s.gen += 1;
-        s.latest = { gen: s.gen, tabId, screenId: C.ENTRY_SCREEN, forms: msg.forms };
+        gen = ++s.gen;
+        s.latest = { gen, tabId, screenId: C.ENTRY_SCREEN, forms: msg.forms };
     });
-    reply({ type: "loaded", gen: state.gen });
+    reply({ type: "loaded", gen });
     await endNavJobOf(tabId, false);
 }
 
@@ -349,24 +365,29 @@ async function onPageOther(msg, tabId, reply) {
     await endNavJobOf(tabId, true);
 }
 
-async function onPageError(msg, tabId, reply) {
+async function onPageError(msg, tabId, reply, docId) {
     // A menu action the tab just sent wins over the target the page guessed.
     const target = pendingTargets.get(tabId) || msg.targetScreenId || C.HOME;
     await endNavJobOf(tabId, false);
+    if (msg.revived === true) {
+        // The page we just revived toward is itself an error page: no second revival (loop guard).
+        reply(noticeReply("GUARD-3"));
+        return;
+    }
     if (state.loggedOut) {
         reply(noticeReply("TAB-2"));
         return;
     }
-    enqueue(tabId, reply, () => replyRevive(tabId, reply, target));
+    enqueue(tabId, docId, reply, () => replyRevive(tabId, docId, reply, target));
 }
 
-function onSubmitRequest(msg, tabId, reply) {
+function onSubmitRequest(msg, tabId, reply, docId) {
     pendingTargets.delete(tabId);
-    enqueue(tabId, reply, () => runSubmit(tabId, msg, reply));
+    enqueue(tabId, docId, reply, () => runSubmit(tabId, docId, msg, reply));
 }
 
-function onOpenRequest(msg, tabId, reply) {
-    enqueue(tabId, reply, () => runOpen(tabId, msg, reply));
+function onOpenRequest(msg, tabId, reply, docId) {
+    enqueue(tabId, docId, reply, () => runOpen(tabId, docId, msg, reply));
 }
 
 async function onReviveDone(msg, tabId, reply) {
@@ -385,7 +406,7 @@ async function onReviveDone(msg, tabId, reply) {
         await endActive(true);
         return;
     }
-    const target = activeMeta.target || C.HOME;
+    const target = active.target || activeMeta.target || C.HOME;
     const plan = C.buildOpenPlan(target, msg.forms);
     if (!plan) {
         reply(noticeReply("GUARD-3"));
@@ -424,6 +445,33 @@ const HANDLERS = {
     "state:get": onStateGet,
 };
 
+const DOCUMENT_BOUND_TYPES = new Set([
+    "page:loaded",
+    "page:entry",
+    "page:other",
+    "page:error",
+    "state:get",
+    "open:request",
+    "submit:request",
+]);
+
+/**
+ * A message from a new document of a tab invalidates what the tab's older documents left behind:
+ * their queued requests are dropped, and a nav job addressed to the old document ends when the new
+ * document starts a request of its own. page:* messages complete the job normally and state:get is
+ * only the new document starting up, so neither ends it here.
+ */
+async function reconcileDocument(tabId, docId, type) {
+    if (!docId || !DOCUMENT_BOUND_TYPES.has(type)) {
+        return;
+    }
+    dropQueuedFor(tabId, docId);
+    const isRequest = type === "open:request" || type === "submit:request";
+    if (isRequest && active && active.kind === "nav" && active.tabId === tabId && active.docId && active.docId !== docId) {
+        await endActive(false);
+    }
+}
+
 async function handleMessage(msg, sender, reply) {
     await stateReady;
     await sweepDeadline();
@@ -437,8 +485,11 @@ async function handleMessage(msg, sender, reply) {
         reply({ type: "error", message: "Sender is not a tab" });
         return;
     }
+    // documentId exists on Chrome 106+; without it the staleness checks are skipped.
+    const docId = sender && typeof sender.documentId === "string" && sender.documentId ? sender.documentId : null;
     log("message", type);
-    await HANDLERS[type](msg, tabId, reply);
+    await reconcileDocument(tabId, docId, type);
+    await HANDLERS[type](msg, tabId, reply, docId);
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -463,6 +514,6 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
     pendingTargets.delete(tabId);
     dropQueuedFor(tabId);
     if (active && active.tabId === tabId) {
-        await endActive(active.kind === "nav" || active.kind === "revive");
+        await endActive(active.kind === "revive");
     }
 });

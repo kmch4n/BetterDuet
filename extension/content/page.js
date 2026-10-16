@@ -23,7 +23,6 @@
     const nonce = crypto.randomUUID();
     let ownTabId = null;
     let hookDisabled = false;
-    let knownStale = false;
     let backBusy = false;
 
     // ---- Channel to the MAIN world hook (plan 7.1) ----
@@ -106,6 +105,8 @@
         onNotice: showNotice,
         // A revival always shows GUARD-2 on the page that follows.
         onRevived: () => session.set(KEY_NOTICE, "GUARD-2"),
+        // DUET's own _doAction3 clears forceClose before submitting (nav:prepare is MAIN-world only).
+        onBeforePlan: () => post("nav:prepare", {}),
     };
 
     async function reopen() {
@@ -133,17 +134,27 @@
             const menuform = document.getElementById("menuform");
             const screenId = menuform ? C.screenIdFromAction(menuform.getAttribute("action")) : null;
 
-            // 1. Error page. A normal screen is never treated as one (the FAQ text could mention the phrases).
-            const errorKind = screenId ? null : C.classifyErrorText(document.body ? document.body.innerText : "");
+            // 1. Error page (plan 7.3 order). Error pages have no #menu sidebar; a normal screen such as
+            // the FAQ may contain the phrases in its body text.
+            const errorKind = document.getElementById("menu")
+                ? null
+                : C.classifyErrorText(document.body ? document.body.innerText : "");
             if (errorKind) {
                 settleGen(null);
+                const record = session.getJson(KEY_TAB);
+                const target = record && record.menuScreenId ? record.menuScreenId : C.HOME;
                 if (session.get(KEY_REVIVED)) {
                     session.remove(KEY_REVIVED);
                     showNotice("GUARD-3");
+                    // Tell the service worker so this tab's nav job ends; it must not revive again.
+                    await Nav.send({
+                        type: "page:error",
+                        errorKind: errorKind,
+                        targetScreenId: target,
+                        revived: true,
+                    }).catch(() => {});
                     return;
                 }
-                const record = session.getJson(KEY_TAB);
-                const target = record && record.menuScreenId ? record.menuScreenId : C.HOME;
                 const reply = await Nav.send({ type: "page:error", errorKind: errorKind, targetScreenId: target });
                 await Nav.handleReply(reply, replyOptions);
                 return;
@@ -213,15 +224,11 @@
             if (reply.type === "send") {
                 post("submit:execute", { reqId: reqId, rewrite: null });
             } else if (reply.type === "rewrite") {
-                knownStale = true;
                 post("submit:execute", {
                     reqId: reqId,
                     rewrite: { action: reply.action, viewKeyedName: reply.viewKeyedName },
                 });
             } else if (reply.type === "notice") {
-                if (reply.id === "TAB-1") {
-                    knownStale = true;
-                }
                 post("submit:restore", { reqId: reqId });
                 showNotice(reply.id);
             } else {
@@ -229,13 +236,14 @@
             }
         } catch (error) {
             log("submit failed", error && error.name);
-            disableHook();
-            if (knownStale) {
-                // Sending a stale page's request would break the session.
+            if (!Nav.isAlive()) {
+                // P-5: the extension is gone, so behave like plain DUET.
+                disableHook();
+                post("submit:execute", { reqId: reqId, rewrite: null });
+            } else {
+                // The extension is alive but could not decide: the page may be stale, so never send its POST.
                 post("submit:restore", { reqId: reqId });
                 showNotice("GUARD-3");
-            } else {
-                post("submit:execute", { reqId: reqId, rewrite: null });
             }
         }
     }

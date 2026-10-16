@@ -135,19 +135,21 @@ Verified in E-025. Exactly:
 In-memory cache mirrored to `chrome.storage.session` under `betterduet:state`. Load once per SW start (`await stateReady`). All mutations go through `updateState(fn)` which chains on a single promise so writes never interleave.
 
 ```js
-{ gen: 0, latest: null /* { gen, tabId, screenId, forms } */, loggedOut: false, job: null /* { jobId, tabId, kind, deadline } */ }
+{ gen: 0, latest: null /* { gen, tabId, screenId, forms } */, loggedOut: false, job: null /* { jobId, tabId, docId, target, kind, deadline } */ }
 ```
 
 On SW start, if `job` exists and `deadline < Date.now()`, drop it and set `latest = null` (server state unknown → next action goes through GUARD-003 recovery; the "entry fetch returns duetError → refetch" rule makes this safe).
 
 ### 6.2 Job queue (CORE-003)
 
-One active job; others wait in an in-memory FIFO. A job record `{ jobId, tabId, kind: "nav" | "download" | "revive" | "decision", deadline }` is persisted in `state.job` while active.
+One active job; others wait in an in-memory FIFO. A job record `{ jobId, tabId, docId, target, kind: "nav" | "download" | "revive" | "decision", deadline }` is persisted in `state.job` while active. `docId` is `sender.documentId` of the requesting document (Chrome 106+; `undefined` disables the staleness checks below) and `target` is the revive job's target screen (so it survives an SW restart).
 
-- `nav`: ends on `page:loaded` / `page:error` / `page:other` from `tabId`, on `chrome.tabs.onRemoved(tabId)`, or at `deadline = now + NAV_TIMEOUT_MS`. On timeout or tab removal: set `latest = null`.
+- `nav`: ends on `page:loaded` / `page:error` / `page:other` from `tabId`, on `chrome.tabs.onRemoved(tabId)`, or at `deadline = now + NAV_TIMEOUT_MS`. On timeout or tab removal `latest` is left unchanged (CORE-003); a wrong `latest` is recovered through GUARD-003.
 - `download`: ends after `DOWNLOAD_SETTLE_MS`; `latest` unchanged (E-022).
 - `revive`: ends on `revive:done` or at `now + REVIVE_TIMEOUT_MS` (timeout → `latest = null`, reply `GUARD-3`).
 - `decision` (block / loggedOut): ends immediately after replying.
+
+Document staleness: every queued item and the active job carry the requester's `documentId`. When `page:loaded` / `page:entry` / `page:other` / `page:error` / `state:get` / `open:request` / `submit:request` arrives from a tab with a different `documentId`, that tab's queued items from other documents are dropped (`{ type: "stale" }` if still open). If the active `nav` job belongs to that tab and was addressed to the old document, a new `open:request` / `submit:request` ends it; `page:*` messages complete it normally and `state:get` (document start-up) leaves it alone.
 
 Content scripts that are waiting on a request keep the SW alive by holding a `chrome.runtime.connect({ name: "keepalive" })` port and posting `{ ping: true }` every `KEEPALIVE_MS` until the reply arrives (nav.js `withKeepalive`).
 
@@ -157,12 +159,12 @@ All requests are `chrome.runtime.sendMessage({ type, ...payload })`; every reply
 
 | Request `type` | Payload | Replies (`type` discriminated union) |
 |---|---|---|
-| `page:loaded` | `{ screenId, forms: FormMap }` | `{ type: "loaded", gen }`. Effect: `gen++`, `latest = { gen, tabId, screenId, forms }`, `loggedOut` unchanged; ends this tab's `nav` job. |
+| `page:loaded` | `{ screenId, forms: FormMap }` | `{ type: "loaded", gen }`. Effect: `gen++` (taken synchronously inside the state update and replied as that captured value), `latest = { gen, tabId, screenId, forms }`, `loggedOut` unchanged; ends this tab's `nav` job. |
 | `page:entry` | `{ forms: FormMap }` (entry page shown directly, i.e. the gate was bypassed) | `{ type: "loaded", gen }`. Effect: `loggedOut = false`, `gen++`, `latest = { gen, tabId, screenId: ENTRY_SCREEN, forms }`. |
 | `page:other` | `{}` (a /gakusei/html page that is neither screen, entry, nor error) | `{ type: "ok" }`; ends this tab's `nav` job; `latest = null`. |
-| `page:error` | `{ errorKind, targetScreenId }` | Ends this tab's `nav` job. `loggedOut` → `{ type: "notice", id: "TAB-2" }`. Else enqueue `revive` → when it runs `{ type: "revive", jobId, targetScreenId }`. |
+| `page:error` | `{ errorKind, targetScreenId, revived? }` | Ends this tab's `nav` job. `revived: true` (the page that followed a revival is itself an error page) → `{ type: "notice", id: "GUARD-3" }`, no revive. `loggedOut` → `{ type: "notice", id: "TAB-2" }`. Else enqueue `revive` → when it runs `{ type: "revive", jobId, targetScreenId }`. |
 | `submit:request` | `{ pageGen, formId, actionName }` | Enqueue; when it runs, `decideSubmit`: `send` → `{ type: "send", jobId }` (start `nav`, or `download` if `isDownloadAction`); `rewrite` → `{ type: "rewrite", jobId, action, viewKeyedName }` from `rewriteTemplateFor(formId, latest.forms[formId])` (if that throws or `latest` is null → treat as `block`), start `nav`; `block` → `{ type: "notice", id: "TAB-1" }`; `loggedOut` → `{ type: "notice", id: "TAB-2" }`. If the action is a menu action, remember `pendingTarget[tabId] = screenIdFromActionName(actionName)` until the job ends. |
-| `open:request` | `{ screenId, reason: "landing" \| "back" \| "reopen" \| "entry" }` | Enqueue; when it runs: `reason === "entry"` → `loggedOut = false`. If `loggedOut` → `{ type: "notice", id: "TAB-2" }`. If `latest` → `{ type: "plan", jobId, plan: buildOpenPlan(reason === "entry" ? HOME : screenId, latest.forms) }` and start `nav` (a `null` plan → fall through to revive). Else → `{ type: "revive", jobId, targetScreenId: reason === "entry" ? NOTICES_SCREEN : screenId }` and start `revive`. |
+| `open:request` | `{ screenId, reason: "landing" \| "back" \| "reopen" \| "entry" }` | Enqueue; when it runs: `reason === "entry"` → `loggedOut = false`. If `loggedOut` → `{ type: "notice", id: "TAB-2" }`. If `latest` → `{ type: "plan", jobId, plan: buildOpenPlan(reason === "entry" ? HOME : screenId, latest.forms) }` and start `nav` and set `pendingTarget[tabId]` to the opened screen (a `null` plan → fall through to revive). Else → `{ type: "revive", jobId, targetScreenId: reason === "entry" ? NOTICES_SCREEN : screenId }` and start `revive` (target persisted in `job.target`). |
 | `revive:done` | `{ jobId, result: "ok" \| "ssoExpired" \| "failed", forms? }` | Must match the active job's `jobId` (else `{ type: "stale" }`). `ok` → `gen++`, `latest = { gen, tabId: null, screenId: HOME, forms }`, then `{ type: "plan", jobId, plan: buildOpenPlan(target, latest.forms) }` and switch the job to `nav`. `ssoExpired` → `{ type: "notice", id: "GUARD-4" }`. `failed` → `{ type: "notice", id: "GUARD-3" }`. |
 | `xhr:logout` | `{}` | `{ type: "ok" }`. Effect: `loggedOut = true`, `latest = null`. |
 | `state:get` | `{}` | `{ type: "state", tabId, loggedOut, hasLatest }` (never forms). |
@@ -176,18 +178,18 @@ Templates leave the SW only inside `plan` / `rewrite` replies to the requesting 
 Channel: `page.js` dispatches `document.dispatchEvent(new CustomEvent("betterduet:init", { detail: nonce }))` at document_start. The hook stores the nonce; afterwards both sides use `window.postMessage({ __betterduet: <type>, nonce, ...payload }, location.origin)` and ignore messages with a wrong nonce or `event.source !== window`.
 
 MAIN → ISOLATED: `submit:intercepted { reqId, formId, actionName, isEvent }`, `back:requested {}`, `xhr:logout {}`.
-ISOLATED → MAIN: `submit:execute { reqId, rewrite: null | { action, viewKeyedName } }`, `submit:restore { reqId }`, `hook:disable {}`.
+ISOLATED → MAIN: `submit:execute { reqId, rewrite: null | { action, viewKeyedName } }`, `submit:restore { reqId }`, `hook:disable {}`, `nav:prepare {}` (sets `window.forceClose = false`, as DUET's `_doAction3` does; posted right before a plan submit on DUET pages, never on the landing page).
 
 1. **Submit hook (CORE-004).** Save `nativeSubmit = HTMLFormElement.prototype.submit` and `nativeRequestSubmit`. Replace `submit` with a function that, when the hook is enabled and `isDuetForm(this.id)`:
    - synchronously records `pending[reqId] = { form: this, linkValue: this.elements[this.id + ":__link_clicked__"]?.value, onclicks: snapshotOnclicks() }` (`snapshotOnclicks` saves every `a` element's current `onclick` attribute, or `null` when absent),
    - posts `submit:intercepted` with `actionName` = the part after `":"` in `linkValue`,
-   - starts an `ACK_TIMEOUT_MS` timer: if no `submit:execute`/`submit:restore` arrives, disable the hook and run the native submit for this request (P-5: extension gone or broken).
-   Otherwise call `nativeSubmit`.
+   - starts an `ACK_TIMEOUT_MS` timer: if page.js never sends `submit:ack`, disable the hook and run the native submit for this request (P-5: extension gone or broken). After `submit:ack` the timer becomes `SETTLE_TIMEOUT_MS`; if it fires, do a restore (no native submit, hook stays enabled).
+   Otherwise call `nativeSubmit`. A `unloadform` submit whose link value is `unloadform:closeWindow` (DUET's `ssoCloseWindow` fallback after a failed logout XHR) is never intercepted: it goes native and posts `xhr:logout`.
    Add a capture-phase `submit` listener on `document`: for DUET forms, `preventDefault()`, record `pending` with `submitter = event.submitter`, post `submit:intercepted` with `isEvent: true`.
 2. **Execute.** On `submit:execute`: restore `__link_clicked__` to `linkValue`; if `rewrite`, set `form.action = rewrite.action` and rename the hidden input whose name starts with `formId + "/"` to `rewrite.viewKeyedName`; then `nativeSubmit.call(form)`, or for `isEvent` set a re-entry flag and `nativeRequestSubmit.call(form, submitter)`.
 3. **Restore (blocked).** On `submit:restore`: after a `setTimeout(0)` (DUET disables links synchronously after `submit()` returns), set `window.mMOnceTimeFlg = true`, restore each saved `onclick` (or `removeAttribute("onclick")` when it was `null`), and reset cursors with `window.jQuery ? jQuery("*").css("cursor", "") : null`.
-4. **Disable.** On `hook:disable` (sent by page.js when `chrome.runtime?.id` is gone) or on ack timeout: all hooks pass through to native behavior from then on.
-5. **Popstate (BACK-001/002).** Wrap `window.addEventListener` so page registrations of `popstate` are dropped while enabled. With the saved original, listen for `popstate`: `history.pushState("push", null, null)` then post `back:requested`.
+4. **Disable.** On `hook:disable` (sent by page.js when `chrome.runtime?.id` is gone) or on the no-ack timeout: all hooks pass through to native behavior from then on.
+5. **Popstate (BACK-001/002).** Wrap `window.addEventListener` so page registrations of `popstate` are dropped while enabled. With the saved original, listen for `popstate`: `history.pushState("push", null, null)` then post `back:requested`, except while a submit is pending (or was just executed) in this document, which mirrors DUET's own flag in global.js.
 6. **Alt+← (BACK-004).** Capture-phase `keydown` on `window`: `altKey && key === "ArrowLeft"` with no Ctrl/Shift/Meta → `event.stopPropagation()` only.
 7. **Logout (CORE-006).** Wrap `XMLHttpRequest.prototype.send`: if `LOGOUT_PATTERN` (inlined copy) matches a string body, post `xhr:logout`. Always call the original. `tests/early-hook.test.js` asserts the inlined pattern equals `BetterDuetCore.LOGOUT_PATTERN.source`.
 
@@ -196,7 +198,7 @@ ISOLATED → MAIN: `submit:execute { reqId, rewrite: null | { action, viewKeyedN
 - `send(message)`: `chrome.runtime.sendMessage` wrapped with `withKeepalive`; rejects if `chrome.runtime?.id` is undefined.
 - `submitPlan(plan)`: build a detached `<form method="post">` with `action = plan.action` and hidden inputs from `plan.fields`, append to `document.documentElement`, `HTMLFormElement.prototype.submit.call(form)` (isolated-world prototype, not hooked).
 - `revive(jobId)`: GUARD-003 executor. `fetch(ENTRY_PATH, { credentials: "include", redirect: "manual" })`; `opaqueredirect`, network error, or non-2xx → `ssoExpired`. Classify the text with `classifyEntryHtml`; `duetError` → fetch once more; still not `entry` → `ssoExpired`. Parse with `DOMParser`, take `form1`, POST its hidden fields with `form1:__link_clicked__ = form1:goHome` (`fetch`, `credentials: "include"`, `redirect: "manual"`). If the home HTML is an error → `failed`. Else `templateFromForm` for the four forms → `send({ type: "revive:done", jobId, result: "ok", forms })` and return the reply.
-- `handleReply(reply, { onNotice })`: `plan` → `submitPlan`; `revive` → `revive(reply.jobId)` then handle its reply recursively (set `betterduet:revived = jobId` before submitting the plan that follows a revival); `notice` → `onNotice(id)`.
+- `handleReply(reply, { onNotice, onRevived, onBeforePlan })`: `plan` → `onBeforePlan()` (page.js posts `nav:prepare`) then `submitPlan`; a `stale` reply to `revive:done` → `GUARD-3`; `revive` → `revive(reply.jobId)` then handle its reply recursively (set `betterduet:revived = jobId` before submitting the plan that follows a revival); `notice` → `onNotice(id)`.
 
 ### 7.3 page.js (ISOLATED, /gakusei/html/*)
 
@@ -204,14 +206,14 @@ At document_start: create the nonce and dispatch `betterduet:init`. If `chrome.r
 
 On `DOMContentLoaded`:
 
-1. Error page (`classifyErrorText(document.body.innerText)`): if `betterduet:revived` is set → show `GUARD-3`, stop. Else `send({ type: "page:error", errorKind, targetScreenId })` where `targetScreenId` comes from the record's `menuScreenId` (or `HOME`); handle the reply; after a successful revival plan, store `betterduet:notice = "GUARD-2"` before navigating.
+1. Error page (checked before entry/screen detection): `classifyErrorText(document.body.innerText)` is non-null and there is no `#menu` sidebar. If `betterduet:revived` is set → show `GUARD-3`, send `page:error { ..., revived: true }` so the SW ends the tab's job, stop. Else `send({ type: "page:error", errorKind, targetScreenId })` where `targetScreenId` comes from the record's `menuScreenId` (or `HOME`); handle the reply; after a successful revival plan, store `betterduet:notice = "GUARD-2"` before navigating.
 2. Entry page (`form1` has `form1:goHome` and no `menuform`): `send({ type: "page:entry", forms })`, keep `pageGen`.
 3. Screen page (`menuform` present and `screenIdFromAction(menuform.getAttribute("action"))` non-null): `send({ type: "page:loaded", screenId, forms })`, keep `pageGen`. Update the record with `applyLoad` (consume `betterduet:pendingBack`), set `record.tabId` to the own tab ID returned by `state:get` (so duplicated tabs take ownership only after a successful load), remove `betterduet:revived`, show and remove `betterduet:notice`.
 4. Anything else: `send({ type: "page:other" })`.
 
 Handlers:
 
-- `submit:intercepted`: wait up to `GEN_WAIT_MS` for `pageGen`; then `send({ type: "submit:request", pageGen, formId, actionName })`. `send` → post `submit:execute { rewrite: null }`; `rewrite` → post `submit:execute { rewrite: { action, viewKeyedName } }`; `notice` → post `submit:restore` and show the notice. Any exception → post `hook:disable` and `submit:execute { rewrite: null }` only if the page is still the latest per the last known gen, otherwise `submit:restore` + `GUARD-3`.
+- `submit:intercepted`: wait up to `GEN_WAIT_MS` for `pageGen`; then `send({ type: "submit:request", pageGen, formId, actionName })`. `send` → post `submit:execute { rewrite: null }`; `rewrite` → post `submit:execute { rewrite: { action, viewKeyedName } }`; `notice` → post `submit:restore` and show the notice. Any other failure (exception, `error` / `stale` reply, rejected `sendMessage`, unknown `pageGen`) while the extension context is alive → post `submit:restore` and show `GUARD-3`, hook stays enabled. Only when the context is gone (`chrome.runtime?.id` undefined, P-5) → post `hook:disable` and `submit:execute { rewrite: null }`.
 - `back:requested`: `planBack(record)`; `null` → `BACK-1`. Else store `betterduet:pendingBack = { nextIndex, target }` and `send({ type: "open:request", screenId: target, reason: "back" })`; handle the reply.
 - Notice buttons: `reopen` → `open:request { screenId: record.menuScreenId, reason: "reopen" }`; `openPortal` → `window.open(SSO_PORTAL_URL, "_blank", "noopener")`.
 
@@ -239,7 +241,7 @@ Replies via `BetterDuetNav.handleReply`; notices render in the panel. A revival 
 ## 9. Tests
 
 - `tests/core.test.js`: every §4 function, named with requirement IDs.
-- `tests/early-hook.test.js`: run `extension/content/early-hook.js` in `node:vm` with minimal fakes (`window`, `document`, `HTMLFormElement`, `XMLHttpRequest`, `history`) to assert: logout pattern parity, that a DUET form `submit()` does not call the native submit before `submit:execute`, that `submit:execute` with `rewrite` renames the view-keyed field and sets action, and that the ack timeout falls back to native submit.
+- `tests/early-hook.test.js`: run `extension/content/early-hook.js` in `node:vm` with minimal fakes (`window`, `document`, `HTMLFormElement`, `XMLHttpRequest`, `history`) to assert: logout pattern parity, that a DUET form `submit()` does not call the native submit before `submit:execute`, that `submit:execute` with `rewrite` renames the view-keyed field and sets action, that the no-ack timeout falls back to native submit, that the post-ack timeout restores instead, that `unloadform:closeWindow` passes through natively, and that popstate is ignored while a submit is pending.
 - `tests/rules.test.js`, `tests/manifest.test.js`: as in v1 (regex matches gakusei pages and the entry page, not `/kokai/`, `/front/`, `/betterduet-landing`; substitution yields `from=fb/fb010/FB01002G.html`; GET + main_frame only; permissions and host permissions exact; every referenced file exists).
 
 ## 10. Manual E2E (lead only)

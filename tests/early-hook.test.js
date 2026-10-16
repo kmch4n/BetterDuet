@@ -277,3 +277,60 @@ test("CORE-004: hook:disable makes later popstate registrations and submits pass
     form.submit();
     assert.equal(env.nativeSubmits.length, 1);
 });
+
+test("CORE-004: after submit:ack the 60 s fallback restores instead of submitting natively", () => {
+    const env = makeEnv();
+    const { form } = makeForm(env, "menuform", "goHome");
+    form.submit();
+    const [request] = env.sent("submit:intercepted");
+    env.deliver("submit:ack", { reqId: request.reqId });
+
+    env.flush(60000);
+    env.flush(0);
+    assert.equal(env.nativeSubmits.length, 0);
+    assert.equal(env.sandbox.mMOnceTimeFlg, true);
+
+    // The hook stays enabled: the next submit is intercepted again.
+    form.submit();
+    assert.equal(env.sent("submit:intercepted").length, 2);
+    assert.equal(env.nativeSubmits.length, 0);
+});
+
+test("CORE-006: the unloadform closeWindow fallback submits natively and posts xhr:logout", () => {
+    const env = makeEnv();
+    const { form } = makeForm(env, "unloadform", "closeWindow");
+    form.submit();
+    assert.equal(env.nativeSubmits.length, 1);
+    assert.equal(env.nativeSubmits[0].link, "unloadform:closeWindow");
+    assert.equal(env.sent("submit:intercepted").length, 0);
+    assert.equal(env.sent("xhr:logout").length, 1);
+
+    // Other unloadform actions are still intercepted.
+    const other = makeForm(env, "unloadform", "somethingElse");
+    other.form.submit();
+    assert.equal(env.sent("submit:intercepted").length, 1);
+    assert.equal(env.nativeSubmits.length, 1);
+});
+
+test("BACK-002: popstate is re-pushed but ignored while a submit is pending or issued", () => {
+    const env = makeEnv();
+    const { form } = makeForm(env, "menuform", "goHome");
+    form.submit();
+    const [request] = env.sent("submit:intercepted");
+
+    env.sandbox.__listeners.popstate[0]({});
+    assert.equal(env.pushStates.length, 1);
+    assert.equal(env.sent("back:requested").length, 0);
+
+    env.deliver("submit:execute", { reqId: request.reqId, rewrite: null });
+    env.sandbox.__listeners.popstate[0]({});
+    assert.equal(env.pushStates.length, 2);
+    assert.equal(env.sent("back:requested").length, 0);
+});
+
+test("CORE-004: nav:prepare clears DUET's forceClose flag", () => {
+    const env = makeEnv();
+    env.sandbox.forceClose = true;
+    env.deliver("nav:prepare", {});
+    assert.equal(env.sandbox.forceClose, false);
+});
