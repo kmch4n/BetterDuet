@@ -1,0 +1,15 @@
+{
+    "manifest_version": 3,
+    "name": "BetterDuet",
+    "version": "0.1.0",
+    "description": "同志社大学の DUET を、複数のタブや再読み込みでも壊れずに使えるようにする非公式の拡張機能",
+    "permissions": ["storage", "declarativeNetRequest"],
+    "host_permissions": ["*://duet.doshisha.ac.jp/*"],
+    "background": { "service_worker": "background.js" },
+    "declarative_net_request": { "rule_resources": [{ "id": "guard", "enabled": true, "path": "rules.json" }] },
+    "content_scripts": [
+        { "matches": ["https://duet.doshisha.ac.jp/gakusei/html/*"], "js": ["content/early-hook.js"], "run_at": "document_start", "world": "MAIN" },
+        { "matches": ["https://duet.doshisha.ac.jp/gakusei/html/*"], "js": ["core.js", "content/notice.js", "content/nav.js", "content/page.js"], "css": ["content/notice.css"], "run_at": "document_start" },
+        { "matches": ["https://duet.doshisha.ac.jp/betterduet-landing*"], "js": ["core.js", "content/notice.js", "content/nav.js", "content/landing.js"], "css": ["content/notice.css"], "run_at": "document_start" }
+    ]
+}

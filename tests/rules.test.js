@@ -1,0 +1,54 @@
+"use strict";
+
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const rules = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "extension", "rules.json"), "utf8")
+);
+const rule = rules[0];
+const regex = new RegExp(rule.condition.regexFilter);
+
+function substitute(url) {
+    const match = regex.exec(url);
+    if (!match) {
+        return null;
+    }
+    return rule.action.redirect.regexSubstitution.replace("\\1", match[1]);
+}
+
+test("GUARD-001: rules.json contains exactly one redirect rule", () => {
+    assert.equal(rules.length, 1);
+    assert.equal(rule.action.type, "redirect");
+});
+
+test("GUARD-001: regexFilter matches /gakusei/html pages and the entry page", () => {
+    assert.ok(regex.test("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01002G.html"));
+    assert.ok(regex.test("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01090G.html"));
+});
+
+test("GUARD-001: regexFilter does not match other DUET paths or other hosts", () => {
+    const urls = [
+        "https://duet.doshisha.ac.jp/kokai/html/fi/fi020/FI02001G.html",
+        "https://duet.doshisha.ac.jp/front/js/common.js",
+        "https://duet.doshisha.ac.jp/betterduet-landing",
+        "https://evil.example/gakusei/html/x",
+    ];
+    for (const url of urls) {
+        assert.equal(regex.test(url), false, url);
+    }
+});
+
+test("GUARD-001: substitution redirects to the landing page with the from parameter", () => {
+    assert.equal(
+        substitute("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01002G.html"),
+        "https://duet.doshisha.ac.jp/betterduet-landing?from=fb/fb010/FB01002G.html"
+    );
+});
+
+test("GUARD-001: rule applies only to GET main_frame requests", () => {
+    assert.deepEqual(rule.condition.requestMethods, ["get"]);
+    assert.deepEqual(rule.condition.resourceTypes, ["main_frame"]);
+});

@@ -1,0 +1,8 @@
+[
+    {
+        "id": 1,
+        "priority": 1,
+        "action": { "type": "redirect", "redirect": { "regexSubstitution": "https://duet.doshisha.ac.jp/betterduet-landing?from=\\1" } },
+        "condition": { "regexFilter": "^https://duet\\.doshisha\\.ac\\.jp/gakusei/html/([A-Za-z0-9/._-]*)", "resourceTypes": ["main_frame"], "requestMethods": ["get"] }
+    }
+]
