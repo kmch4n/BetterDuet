@@ -52,6 +52,8 @@ chrome.webRequest.onErrorOccurred.addListener(
     URL_FILTER
 );
 
+chrome.tabs.onCreated.addListener((t) => push({ ev: "tab-created", tab: t.id, openerTabId: t.openerTabId ?? null }));
+
 chrome.webNavigation.onCommitted.addListener((d) => {
     if (d.frameId !== 0) return;
     if (!HOSTS.some((h) => d.url.includes(h)) && !d.url.startsWith("chrome-extension:")) return;
@@ -132,7 +134,11 @@ const handlers = {
     setGate,
     allowTab: async (args, sender) => allowTab({ tabId: args.tabId ?? sender.tab?.id, allowed: args.allowed }),
     rules: async () => chrome.declarativeNetRequest.getSessionRules(),
-    tabs: async () => (await chrome.tabs.query({})).filter((t) => HOSTS.some((h) => (t.url || "").includes(h))).map((t) => ({ id: t.id, url: strip(t.url), discarded: t.discarded, active: t.active })),
+    tabs: async () => (await chrome.tabs.query({})).filter((t) => HOSTS.some((h) => (t.url || "").includes(h))).map((t) => ({ id: t.id, url: strip(t.url), discarded: t.discarded, active: t.active, openerTabId: t.openerTabId ?? null })),
+    getTab: async ({ tabId }) => {
+        const t = await chrome.tabs.get(tabId);
+        return { id: t.id, openerTabId: t.openerTabId ?? null, url: strip(t.url) };
+    },
     discard: async ({ tabId }) => {
         const t = await chrome.tabs.discard(tabId);
         return { id: t?.id, discarded: t?.discarded };
@@ -143,7 +149,7 @@ const handlers = {
     },
     duplicate: async ({ tabId }) => {
         const t = await chrome.tabs.duplicate(tabId);
-        return { id: t?.id };
+        return { id: t?.id, openerTabId: t?.openerTabId ?? null };
     },
 };
 

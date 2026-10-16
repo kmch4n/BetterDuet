@@ -88,7 +88,7 @@ BetterDuet の設計の前提になる、DUET 側の挙動をまとめた文書�
 | 得点分布、授業公開 | `/kokai/html/` 以下へ、ポップアップで POST する（`callTokutenBunpu`、`callZyugyoKohyo`） |
 | マニュアルや注意事項の PDF | `duet-man.doshisha.ac.jp` や `www.doshisha.ac.jp` をポップアップで開く（`openUrl`） |
 | 郵便番号の検索 | 日本郵便のサイトをポップアップで開く |
-| ファイルのダウンロード | `form1` の POST（`doDownload`、`doDownloadSaveMessage`）。画面は移らない。送信後にサーバーの現在の画面が変わるかは未検証 |
+| ファイルのダウンロード | `form1` の POST（`doDownload`、`doDownloadSaveMessage`）。画面は移らず、サーバーの現在の画面も変わらない（E-022） |
 
 ### DUET 自身の「戻る」（goBackN）
 
@@ -273,3 +273,15 @@ DUET のタブを `chrome.tabs.discard` で破棄した。タブ ID が変わっ
 ### E-021 ログアウトボタンの処理（2026-10-17）
 
 ヘッダーの「LOGOUT」（`member` フォームの中の `input`）の `onclick` が `ssoCloseWindowWithHakiCheck` を呼ぶことを確かめた。ボタンは押していない。押したときの処理は `common.js` の `ssoCloseWindow` を読んで確かめた。
+
+### E-022 ダウンロードしてもサーバーの現在の画面は変わらない（2026-10-17）
+
+`fetch` で登録科目一覧を取得し、その画面の `form1` で `form1:doDownload` を `fetch` で POST した。応答は 200 で、`Content-Type` は PDF、`Content-Disposition` は attachment だった。ファイルはディスクに保存していない。その後、同じ登録科目一覧の画面の `menuform` でメニューのアクションを POST すると、正常な画面が返った。ダウンロードの前後で、サーバーの現在の画面は登録科目一覧のままだった。
+
+### E-023 複製したタブの openerTabId は複製元を指さない（2026-10-17）
+
+SSO ポータルのタブを `chrome.tabs.duplicate` で複製した。新しいタブの `openerTabId` は、複製元のタブではなく、その時点で前面にあった別のタブの ID だった。複製元を見分ける手がかりには使えない。
+
+### E-024 複製したタブには sessionStorage が引き継がれる（2026-10-17）
+
+SSO ポータルのタブで `sessionStorage` に値を書いてから、そのタブを複製した。複製先のタブで同じ値を読めた。
