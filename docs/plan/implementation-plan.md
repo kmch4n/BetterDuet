@@ -1,5 +1,11 @@
 # Implementation Plan v2
 
+> **Status (2026-10-17): implemented as v0.1.0.** Changes made after this plan was written, all reflected in the code and the spec:
+> - Logout XHR is held until the SW acknowledges (`xhr:logout { reqId }` → `logout:ack { reqId }`, max 500 ms) because DUET closes the tab right after the logout response.
+> - `rules.json` has a second rule: an `allow` rule (`urlFilter`, priority 2) for exactly `FB01090G.html?betterduet=sso`. `landing.js` navigates there once (`sessionStorage` `betterduet:ssoTried`) when an SSO entry's revival reports `ssoExpired` (GUARD-004, E-027).
+> - Injected UI uses DUET-matched tokens (`content/tokens.css`) and `bd-` classes (NOTICE-002).
+> The implementation map for humans is `docs/TechNote.md`; verification steps are in `docs/DEVELOPMENT.md`.
+
 Internal engineering plan for implementing every `Accepted` requirement in `docs/spec/`. This file is not a spec: when it disagrees with `docs/spec/`, the spec wins. Requirement IDs (`CORE-001`, `TAB-002`, ...) refer to the spec. Experiment IDs (`E-0NN`) refer to `docs/spec/duet-platform.md`.
 
 v2 incorporates the review of v1 and two extra experiments: E-025 (the DNR redirect fires for the SSO-initiated GET with only the DUET host permission) and E-026 (toolbar Back produces an in-document `popstate` once the page has user activation).

@@ -17,10 +17,20 @@
 - After implementing, update the requirement's status to `Implemented` and record how it was verified, in the same change.
 - `docs/spec/duet-platform.md` is the living spec of DUET's own behavior. Whenever you observe DUET behavior (intended or not), add an entry to its observation log (`E-NNN`, date, steps, result) and update the body. Mark anything unverified as such.
 
+## Where Things Are
+
+- `docs/spec/` — the spec (source of truth). `duet-platform.md` is the living record of DUET's own behavior (E-001…).
+- `docs/TechNote.md` — implementation map: which file does what, the main flows, where state lives, pitfalls.
+- `docs/DEVELOPMENT.md` — tests, manual and agent-driven verification on real DUET, tool usage and gotchas.
+- `docs/plan/implementation-plan.md` — message protocol tables (§6.3 SW messages, §7.1 MAIN↔ISOLATED). Keep them in sync with the code.
+- `tools/chrome-ext.ps1` — loads, reloads, and toggles unpacked extensions in the user's Chrome via UI Automation.
+- `experiments/probe/` — request-logging probe extension for investigating DUET; keep it disabled unless investigating.
+
 ## Architecture
 
 - Content scripts are plain browser JavaScript and should remain isolated with IIFEs.
-- Shared browser utilities live under `extension/utils/` and are exposed through `window.BetterDuetUtils`.
+- Shared pure logic lives in `extension/core.js` (`globalThis.BetterDuetCore`), loaded by the service worker via `importScripts` and by content scripts first in their `js` list. Keep it free of `chrome.*` and DOM globals so `node --test` can require it.
+- Injected UI must look like part of DUET (NOTICE-002): use the `--bd-*` tokens in `extension/content/tokens.css`, never raw colour values, and own `bd-` class names rather than DUET's classes. Re-measure DUET with `getComputedStyle` before changing tokens.
 - DUET keeps one server-side "current view" per session. Any request that does not match it invalidates the whole session (see `docs/spec/duet-platform.md`). All requests to DUET must go through the single serialized path defined in the spec; never send ad-hoc requests from feature code.
 
 ## Change Safety
@@ -42,5 +52,6 @@
 - Run `node --check` on every changed JavaScript file.
 - Parse changed JSON files to confirm valid syntax.
 - Run Prettier as a check when available; do not introduce a package manager solely for formatting.
-- For behavior changes, manually load `extension/` from `chrome://extensions/` and test the affected real DUET page, including multi-tab states when relevant.
+- For behavior changes, load `extension/` in the user's Chrome and test the affected real DUET page, including multi-tab states when relevant. Agents can do this without the user by following `docs/DEVELOPMENT.md` (Claude in Chrome for pages, `tools/chrome-ext.ps1` for chrome://extensions, real OS input for Back/Alt+Left/confirm dialogs).
+- Never print page text that may contain personal data (names, student IDs, grades, course names); read only the fields you need, such as the breadcrumb or error markers.
 - If real DUET access is unavailable, clearly report which behavior remains manually unverified.

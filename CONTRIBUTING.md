@@ -55,9 +55,14 @@ DUET のページは、ブラウザの再読み込みでセッションが切れ
 | パス | 内容 |
 |---|---|
 | `docs/spec/` | 仕様書。拡張機能の動作の正本 |
+| `docs/TechNote.md` | 実装の地図。どのファイルが何をしているか、主な流れ、つまずきやすい点 |
+| `docs/DEVELOPMENT.md` | テストと、実際の DUET での確認の手順 |
 | `extension/` | 配布する拡張機能の本体。`manifest.json` が注入するスクリプトや権限の正本 |
-| `extension/utils/` | 共通の処理。`window.BetterDuetUtils` から使う |
+| `extension/core.js` | 共通の純粋な処理。`globalThis.BetterDuetCore` から使い、Node のテストからも読み込む |
+| `extension/content/` | DUET の画面と着地ページで動くスクリプト、見た目（`tokens.css`、`notice.css`） |
 | `tests/` | Node.js 標準のテストランナーで動くテスト |
+| `tools/` | 開発用のスクリプト（`chrome-ext.ps1`：拡張機能の読み込みなどを自動で行う） |
+| `experiments/` | DUET の挙動を調べるための検証用コード |
 
 ### コーディングの決まり
 
@@ -66,6 +71,7 @@ DUET のページは、ブラウザの再読み込みでセッションが切れ
 - インデントは 4 スペース。Prettier を使う場合は、リポジトリの `.prettierrc` の設定に従う
 - DUET の HTML は予告なく変わるため、セレクタは狭く指定し、要素が見つからないときも壊れないようにする
 - 画面に追加する要素は、初期化が何度走っても重複しないようにする
+- 画面に追加する要素の見た目は DUET にそろえる。色や大きさは `extension/content/tokens.css` のトークンを使い、直接の値を書かない（仕様書の NOTICE-002）
 - DUET へのリクエストは、仕様で決めた共通の経路からだけ送る。機能ごとに `fetch` を書かない
 - スクリプトを追加・削除・並べ替えたときは `extension/manifest.json` も更新する
 

@@ -308,3 +308,21 @@ BetterDuet を入れた状態で、DUET のヘッダーの LOGOUT でログア�
 
 - DUET の「よくある質問」に、30分間操作をしないとタイムアウト（無効）になると書かれている
 - DUET のセッションがない状態（ログアウトしたあと、拡張機能も無効）でホームの URL（`FB01002G.html`）を画面として開くと、エラーではなく入場ページの内容が返った
+
+### E-029 DUET の見た目（2026-10-17）
+
+ホームと授業評価アンケートの画面で、`getComputedStyle` により測った。NOTICE-002 のデザイントークンの元になっている。
+
+| 要素 | 値 |
+|---|---|
+| 本文 | Meiryo 系、13px、行の高さ約 20px、文字は黒 |
+| `#contents` | 余白 40px 20px 20px、左に 180px（サイドメニューの幅） |
+| `div.block` | 背景 `rgb(50,100,150)`、下の余白 15px |
+| `div.block h3` | 白、18px、太字、行の高さ 30px、余白 10px 10px 10px 15px |
+| `div.block div.content` | 余白 0 10px 10px |
+| `ul.data li` | 白地、余白 10px、文字 `rgb(25,75,125)` |
+| `ul.data li a` | `rgb(25,50,100)`、下線 |
+| `p.message`（説明文の枠） | 背景 `rgb(243,243,243)`、角丸 5px、余白 10px、白い 1px の枠線 |
+| `input[type=button]` | 背景 `rgb(221,221,221)` と `/front/images/global/button_bg.png`（`-2px 2px`、繰り返さない。左端に「›」）、枠線 `rgb(204,204,204)`、高さ 20px、角丸なし |
+| `th`（入力欄の見出し） | 背景 `rgb(25,75,125)`、白文字 |
+| 「必須」バッジ | `span.required` の背景画像 `/front/images/global/required_icon.png`（オレンジ地に白文字） |
