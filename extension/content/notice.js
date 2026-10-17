@@ -4,6 +4,7 @@
 
     const C = globalThis.BetterDuetCore;
     const NOTICE_ID = "betterduet-notice";
+    const TITLE = "BetterDuet からのお知らせ";
 
     function dismiss() {
         const existing = document.getElementById(NOTICE_ID);
@@ -28,11 +29,13 @@
         }
         // Block repeated clicks while the action runs; a navigation normally replaces the page.
         button.disabled = true;
+        button.setAttribute("aria-busy", "true");
         Promise.resolve()
             .then(handler)
             .catch(() => {})
             .then(() => {
                 button.disabled = false;
+                button.removeAttribute("aria-busy");
             });
     }
 
@@ -53,33 +56,55 @@
         }
         dismiss();
 
+        // Same shape as DUET's own .block > h3 + .content > p.messageBox (NOTICE-002).
         const root = document.createElement("div");
         root.id = NOTICE_ID;
-        root.className = "betterduet-notice betterduet-notice--" + definition.kind;
+        root.className = "bd-scope bd-notice";
+        root.setAttribute("data-kind", definition.kind);
         root.setAttribute("role", definition.kind === "warning" ? "alert" : "status");
         root.setAttribute("data-notice-id", id);
 
+        const head = document.createElement("div");
+        head.className = "bd-notice__head";
+        const title = document.createElement("p");
+        title.className = "bd-notice__title";
+        title.textContent = TITLE;
+        head.appendChild(title);
+
+        const close = document.createElement("button");
+        close.type = "button";
+        close.className = "bd-notice__close";
+        close.setAttribute("aria-label", "閉じる");
+        close.textContent = "×";
+        close.addEventListener("click", dismiss);
+        head.appendChild(close);
+        root.appendChild(head);
+
+        const body = document.createElement("div");
+        body.className = "bd-notice__body";
+        const message = document.createElement("div");
+        message.className = "bd-notice__message";
         const text = document.createElement("p");
-        text.className = "betterduet-notice__text";
-        text.textContent = definition.text;
-        root.appendChild(text);
+        text.className = "bd-notice__text";
+        if (definition.kind === "warning") {
+            const badge = document.createElement("span");
+            badge.className = "bd-badge";
+            badge.textContent = "注意";
+            text.appendChild(badge);
+        }
+        text.appendChild(document.createTextNode(definition.text));
+        message.appendChild(text);
 
         if (definition.button) {
             const action = document.createElement("button");
             action.type = "button";
-            action.className = "betterduet-notice__action";
+            action.className = "bd-button";
             action.textContent = definition.button.label;
             action.addEventListener("click", () => runAction(definition.button.action, opts, action));
-            root.appendChild(action);
+            message.appendChild(action);
         }
-
-        const close = document.createElement("button");
-        close.type = "button";
-        close.className = "betterduet-notice__close";
-        close.setAttribute("aria-label", "閉じる");
-        close.textContent = "×";
-        close.addEventListener("click", dismiss);
-        root.appendChild(close);
+        body.appendChild(message);
+        root.appendChild(body);
 
         container.insertBefore(root, container.firstChild);
         return root;

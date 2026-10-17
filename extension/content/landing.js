@@ -33,18 +33,35 @@
             document.body.removeChild(document.body.firstChild);
         }
         document.body.style.margin = "0";
-        document.body.style.fontFamily = "sans-serif";
 
+        // A single DUET-style block (NOTICE-002): blue heading band, white message box.
         panel = document.createElement("main");
         panel.id = "betterduet-landing";
-        panel.style.cssText =
-            "box-sizing:border-box;max-width:640px;margin:20vh auto 0;padding:0 16px;text-align:center;color:#1a1a1a;";
+        panel.className = "bd-scope bd-landing";
 
-        status = document.createElement("p");
-        status.setAttribute("role", "status");
-        status.style.cssText = "font-size:18px;margin:0 0 16px;";
-        status.textContent = "DUET を開いています…";
+        status = document.createElement("div");
+        status.className = "bd-notice";
+        const head = document.createElement("div");
+        head.className = "bd-notice__head";
+        const title = document.createElement("h1");
+        title.className = "bd-notice__title";
+        title.textContent = "DUET";
+        head.appendChild(title);
+        status.appendChild(head);
+        const body = document.createElement("div");
+        body.className = "bd-notice__body";
+        const text = document.createElement("p");
+        text.className = "bd-landing__status";
+        text.setAttribute("role", "status");
+        text.textContent = "DUET を開いています…";
+        body.appendChild(text);
+        status.appendChild(body);
         panel.appendChild(status);
+
+        const brand = document.createElement("p");
+        brand.className = "bd-landing__brand";
+        brand.textContent = "BetterDuet";
+        panel.appendChild(brand);
 
         document.body.appendChild(panel);
         document.title = "DUET";

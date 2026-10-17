@@ -1,84 +1,178 @@
-/* BetterDuet notice bar (NOTICE-001). Normal document flow, no overlay. */
-#betterduet-notice {
+/* Hallmark · component: notice block · genre: modern-minimal · theme: custom (host-matched to DUET; tokens in tokens.css)
+ * Mirrors DUET's own .block > h3 + .content > p.messageBox so the notice reads as part of the page (NOTICE-001, NOTICE-002).
+ * states: default · hover · focus · active · disabled · loading · error · success
+ * contrast: block-ink on block 5.9:1 · ink on message grey 19:1 · badge ink on warning 4.6:1 · focus ring ≥ 3:1 on both surfaces
+ */
+
+.bd-notice {
     box-sizing: border-box;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 12px;
-    width: 100%;
-    margin: 0 0 8px;
-    padding: 8px 12px;
-    border: 1px solid #336699;
-    border-left-width: 6px;
-    border-radius: 2px;
-    font-family: inherit;
-    font-size: 14px;
-    line-height: 1.5;
+    margin: 0 0 var(--bd-space-lg);
+    padding: 0;
+    background: var(--bd-color-block);
     text-align: left;
 }
 
-#betterduet-notice.betterduet-notice--info {
-    background: #e8f0f8;
-    border-color: #336699;
-    color: #1a1a1a;
+.bd-notice__head {
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-sm);
+    margin: 0;
+    padding: var(--bd-space-md) var(--bd-space-md) var(--bd-space-md) var(--bd-space-lg);
 }
 
-#betterduet-notice.betterduet-notice--warning {
-    background: #fff3cd;
-    border-color: #8a5a00;
-    color: #2b2000;
-}
-
-#betterduet-notice .betterduet-notice__text {
-    flex: 1 1 240px;
+.bd-notice__title {
+    flex: 1 1 auto;
+    min-width: 0;
     margin: 0;
     padding: 0;
-    color: inherit;
-    font-size: inherit;
-    line-height: inherit;
+    color: var(--bd-color-block-ink);
+    font-size: var(--bd-text-heading);
+    font-weight: 700;
+    line-height: var(--bd-leading-heading);
+    overflow-wrap: anywhere;
 }
 
-#betterduet-notice button {
-    box-sizing: border-box;
+.bd-notice__body {
+    padding: 0 var(--bd-space-md) var(--bd-space-md);
+}
+
+.bd-notice__message {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--bd-space-sm) var(--bd-space-md);
     margin: 0;
-    font-family: inherit;
-    font-size: 14px;
-    line-height: 1.4;
+    padding: var(--bd-space-md);
+    background: var(--bd-color-message);
+    border: 1px solid var(--bd-color-paper);
+    border-radius: var(--bd-radius-message);
+    color: var(--bd-color-ink);
+}
+
+/* Warning label in the spirit of DUET's orange "必須" badge. */
+.bd-badge {
+    display: inline-block;
+    margin: 0 var(--bd-space-sm) 0 0;
+    padding: 0 var(--bd-space-2xs);
+    background: var(--bd-color-warning);
+    color: var(--bd-color-warning-ink);
+    font-size: var(--bd-text-small);
+    font-weight: 700;
+    line-height: var(--bd-leading-body);
+    border-radius: 2px;
+    vertical-align: baseline;
+}
+
+.bd-notice__text {
+    flex: 1 1 240px;
+    min-width: 0;
+    margin: 0;
+}
+
+/* DUET-style button: grey gradient, thin rule, square corners. */
+.bd-button {
+    box-sizing: border-box;
+    min-width: var(--bd-control-min-width);
+    min-height: var(--bd-control-height);
+    margin: 0;
+    padding: 0 var(--bd-space-md) 0 var(--bd-space-lg);
+    border: 1px solid var(--bd-color-button-rule);
+    border-radius: 0;
+    /* DUET's button image carries the left chevron; it is drawn once, not tiled. */
+    background: var(--bd-color-button) var(--bd-image-button) no-repeat -2px 2px;
+    color: var(--bd-color-ink);
+    font: inherit;
+    white-space: nowrap;
     cursor: pointer;
 }
 
-#betterduet-notice button:disabled {
+.bd-button:hover,
+.bd-button.is-hover {
+    border-color: var(--bd-color-button-rule-strong);
+    background-color: var(--bd-color-button-hover);
+}
+
+.bd-button:active,
+.bd-button.is-active {
+    background-color: var(--bd-color-button-active);
+    background-image: none;
+}
+
+.bd-button:focus-visible,
+.bd-button.is-focus {
+    outline: 2px solid var(--bd-color-focus);
+    outline-offset: 2px;
+}
+
+/* Disabled covers the loading state: the action is running and a navigation usually follows. */
+.bd-button:disabled,
+.bd-button[aria-busy="true"] {
     cursor: default;
     opacity: 0.6;
 }
 
-#betterduet-notice .betterduet-notice__action {
-    padding: 4px 12px;
+/* Close control sits on the blue heading band, like text on DUET's h3. */
+.bd-notice__close {
+    flex: 0 0 auto;
+    min-width: var(--bd-control-height);
+    min-height: var(--bd-control-height);
+    margin: 0;
+    padding: 0 var(--bd-space-2xs);
     border: 1px solid transparent;
-    border-radius: 3px;
-    background: #1f4e79;
-    color: #ffffff;
-}
-
-#betterduet-notice.betterduet-notice--warning .betterduet-notice__action {
-    background: #5c3d00;
-}
-
-#betterduet-notice .betterduet-notice__close {
-    min-width: 28px;
-    padding: 2px 8px;
-    border: 1px solid currentColor;
-    border-radius: 3px;
+    border-radius: 0;
     background: transparent;
-    color: inherit;
-    font-size: 16px;
+    color: var(--bd-color-block-ink);
+    font: inherit;
+    font-size: var(--bd-text-heading);
+    line-height: 1;
+    cursor: pointer;
 }
 
-#betterduet-notice button:focus-visible {
-    outline: 3px solid #0b57d0;
-    outline-offset: 2px;
+.bd-notice__close:hover,
+.bd-notice__close.is-hover {
+    border-color: var(--bd-color-block-ink);
 }
 
-#betterduet-notice.betterduet-notice--warning button:focus-visible {
-    outline-color: #1a1a1a;
+.bd-notice__close:active,
+.bd-notice__close.is-active {
+    background: var(--bd-color-link);
+}
+
+.bd-notice__close:focus-visible,
+.bd-notice__close.is-focus {
+    outline: 2px solid var(--bd-color-focus-on-block);
+    outline-offset: 1px;
+}
+
+/* Landing page: one DUET-style block on an otherwise empty page (GUARD-002). */
+.bd-landing {
+    box-sizing: border-box;
+    max-width: 640px;
+    margin: 15vh auto 0;
+    padding: 0 var(--bd-space-lg);
+}
+
+.bd-landing .bd-notice {
+    margin-top: var(--bd-space-lg);
+}
+
+.bd-landing__status {
+    margin: 0;
+    padding: var(--bd-space-md);
+    background: var(--bd-color-message);
+    border: 1px solid var(--bd-color-paper);
+    border-radius: var(--bd-radius-message);
+}
+
+.bd-landing__brand {
+    margin: var(--bd-space-sm) 0 0;
+    color: var(--bd-color-link);
+    font-size: var(--bd-text-small);
+    text-align: right;
+}
+
+@media (max-width: 480px) {
+    .bd-notice__text {
+        flex-basis: 100%;
+    }
 }

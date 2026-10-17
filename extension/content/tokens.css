@@ -1,0 +1,53 @@
+/* Hallmark · design tokens for BetterDuet injected UI · genre: modern-minimal · tone: utilitarian
+ * theme: custom (host-matched to DUET, measured 2026-10-17: block blue band, grey rounded p.message box,
+ *        navy underlined links, grey gradient buttons with a chevron, orange "required" badge, Meiryo 13px body)
+ * Every colour below mirrors a computed style on duet.doshisha.ac.jp; see docs/spec/architecture.md (NOTICE-002).
+ */
+
+/* Scoped to the extension's own UI so DUET's styles stay untouched. */
+.bd-scope {
+    /* DUET .block background and h3 text */
+    --bd-color-block: oklch(49.2% 0.097 250);
+    --bd-color-block-ink: oklch(100% 0 0);
+    /* DUET .messageBox / ul.data li */
+    --bd-color-paper: oklch(100% 0 0);
+    --bd-color-ink: oklch(0% 0 0);
+    /* DUET p.message (explanation box inside a block) */
+    --bd-color-message: oklch(96.4% 0 0);
+    --bd-radius-message: 5px;
+    /* DUET content links */
+    --bd-color-link: oklch(32.7% 0.094 262);
+    /* DUET input[type=button] */
+    --bd-color-button: oklch(89.8% 0 0);
+    --bd-color-button-hover: oklch(85% 0 0);
+    --bd-color-button-active: oklch(80% 0 0);
+    --bd-color-button-rule: oklch(84.5% 0 0);
+    --bd-color-button-rule-strong: oklch(70% 0 0);
+    --bd-image-button: url("/front/images/global/button_bg.png");
+    /* Warning badge, modelled on DUET's orange "必須" badge but dark enough for 4.5:1 white text. */
+    --bd-color-warning: oklch(52% 0.15 45);
+    --bd-color-warning-ink: oklch(100% 0 0);
+    --bd-color-focus: oklch(32.7% 0.094 262);
+    --bd-color-focus-on-block: oklch(100% 0 0);
+
+    --bd-font-body: Meiryo, "メイリオ", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", arial, helvetica, clean, sans-serif;
+    --bd-text-small: 12px;
+    --bd-text-body: 13px;
+    --bd-text-heading: 18px;
+    --bd-leading-body: 20px;
+    --bd-leading-heading: 30px;
+
+    --bd-space-3xs: 1px;
+    --bd-space-2xs: 4px;
+    --bd-space-sm: 8px;
+    --bd-space-md: 10px;
+    --bd-space-lg: 15px;
+
+    --bd-control-height: 24px;
+    --bd-control-min-width: 104px;
+
+    font-family: var(--bd-font-body);
+    font-size: var(--bd-text-body);
+    line-height: var(--bd-leading-body);
+    color: var(--bd-color-ink);
+}

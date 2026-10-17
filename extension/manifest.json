@@ -9,7 +9,7 @@
     "declarative_net_request": { "rule_resources": [{ "id": "guard", "enabled": true, "path": "rules.json" }] },
     "content_scripts": [
         { "matches": ["https://duet.doshisha.ac.jp/gakusei/html/*"], "js": ["content/early-hook.js"], "run_at": "document_start", "world": "MAIN" },
-        { "matches": ["https://duet.doshisha.ac.jp/gakusei/html/*"], "js": ["core.js", "content/notice.js", "content/nav.js", "content/page.js"], "css": ["content/notice.css"], "run_at": "document_start" },
-        { "matches": ["https://duet.doshisha.ac.jp/betterduet-landing*"], "js": ["core.js", "content/notice.js", "content/nav.js", "content/landing.js"], "css": ["content/notice.css"], "run_at": "document_start" }
+        { "matches": ["https://duet.doshisha.ac.jp/gakusei/html/*"], "js": ["core.js", "content/notice.js", "content/nav.js", "content/page.js"], "css": ["content/tokens.css", "content/notice.css"], "run_at": "document_start" },
+        { "matches": ["https://duet.doshisha.ac.jp/betterduet-landing*"], "js": ["core.js", "content/notice.js", "content/nav.js", "content/landing.js"], "css": ["content/tokens.css", "content/notice.css"], "run_at": "document_start" }
     ]
 }
