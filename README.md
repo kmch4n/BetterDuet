@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/images/logo.png" width="112" alt="BetterDuet のロゴ">
+
 # BetterDuet
 
 同志社大学の DUET を、もっと使いやすく。

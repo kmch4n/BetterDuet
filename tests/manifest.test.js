@@ -12,6 +12,7 @@ const referenced = [
     manifest.background.service_worker,
     ...manifest.content_scripts.flatMap((cs) => [...(cs.js || []), ...(cs.css || [])]),
     ...manifest.declarative_net_request.rule_resources.map((r) => r.path),
+    ...Object.values(manifest.icons || {}),
 ];
 const missing = [...new Set(referenced)].filter(
     (file) => !fs.existsSync(path.join(extensionDir, file))
