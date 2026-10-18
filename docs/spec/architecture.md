@@ -149,6 +149,21 @@ E-018 の範囲では、ログアウト以外に Ajax で DUET に送る操作�
 - `manifest.json` の権限が上のとおりになっている
 - ブラウザを閉じると、記録した情報が残らない
 
+### CORE-009 対応する Chrome の最低バージョン
+
+- 状態: Draft
+- 優先度: 推奨
+
+`manifest.json` に `"minimum_chrome_version": "111"` を書き、それより古い Chrome には入れられないようにする。
+
+理由：早期フック（CORE-004）は `content_scripts` の `world: "MAIN"` で DUET のスクリプトより先に動く必要があり、この指定は Chrome 111 から使える。MAIN world で動かないと DUET の `form.submit()` を横取りできず、古いタブからの送信がそのまま DUET に届いてセッションが壊れる（P-1）。ほかに使っている `MessageSender.documentId`（106 以降）と `chrome.storage.session`（102 以降）は、111 なら使える。
+
+受け入れ条件:
+- `manifest.json` に `minimum_chrome_version` が `"111"` で書かれている（`tests/manifest.test.js` で確かめる）
+- README の導入手順に、Chrome 111 以降が必要と書かれている
+
+（Issue #6。メンテナーが確認して `Accepted` にするまで実装しない）
+
 ## お知らせ帯
 
 拡張機能が利用者に伝えることがあるとき、DUET の画面の上部（`#contents` の先頭）に帯を出します。着地ページでは、ページの中央に同じ内容を出します。
