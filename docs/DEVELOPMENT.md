@@ -2,11 +2,11 @@
 
 BetterDuet を開発し、実際の DUET で確かめるための手順をまとめます。人が手で行う手順と、AI エージェントが人の手を借りずに行う手順の両方を書いています。開発の進め方（仕様から始める）は [CONTRIBUTING.md](../CONTRIBUTING.md) と [仕様書](spec/README.md) を参照してください。
 
-最終更新: 2026-10-17
+最終更新: 2026-10-19
 
 ## 現在の状態
 
-- v0.1.0：仕様の全要件を実装済み。CORE-005（最新のタブでのダウンロード）だけ、実機での確認が一部残っている
+- v0.1.0：仕様の全要件を実装済み。CORE-005（最新のタブでのダウンロード）は 2026-10-19 に実機で確認し、Implemented にした
 - 2026-10-17 に v0.1.0 を GitHub Releases で公開した
 - 確かめきれていないことは [product.md](spec/product.md) の「確かめきれていないこと」にある
 
@@ -70,6 +70,11 @@ pwsh tools/chrome-ext.ps1 -Action disable -Name "BetterDuet Probe"
 - **Claude in Chrome から送るキー入力では、Chrome の「戻る」は動かない**：Alt+← は `keybd_event` で送る。対象のタブを前面にするには、UI Automation でタブを選び、ページの `document.visibilityState` が `visible` になったことを確かめる
 - **DUET の確認ダイアログ（`confirm`）**：Claude in Chrome の JavaScript 実行を止めてしまう。ボタンには `focus()` だけをして、本物の Enter で押す
 - **個人情報を出力に出さない**：DUET の画面には氏名、学生番号、成績、科目名がある。ページの文字を取得するときは、画面名（パンくず）やエラーの有無など、必要な項目に絞る。ツールが「Cookie/query string data」として出力を止めることがあるので、そのときは値ではなくハッシュや長さだけを出す
+- **前面化のために Alt を押すと、ページが「操作済み」になる**：`SetForegroundWindow` を通すために Alt を1回押す手がよく使われるが、Chrome がすでに前面にあると、そのキーがページに届いて `navigator.userActivation.hasBeenActive` が true になる。ページを操作していない状態を確かめる実験（E-031）では、Chrome が前面にないときだけ Alt を押す
+- **ダウンロードのあとは別のウィンドウが前面に出ることがある**：2026-10-19 の確認では、ダウンロードのたびに Explorer の「Downloads」が前面に出て、本物のキー入力がそちらに送られた。キーを送る直前に `GetForegroundWindow` で Chrome が前面かを確かめる
+- **DUET はボタンの上の Enter を自分で処理する**：LOGOUT ボタンに `focus()` して Enter を送っても押されない。ボタンは本物のマウスで押し、確認ダイアログの OK だけを Enter で押す
+- **どのタブが前面かは `visibilityState` では分からない**：Claude in Chrome のタブグループのタブは、裏にあっても `visible` を返すことがある。`requestAnimationFrame` の1秒あたりの回数（前面は約60、裏は約30）で見分ける。UI Automation でタブを選ぶときは、Claude in Chrome がタブを作った直後だと、そのタブがまだ選ばれていないことがある
+- **「デバッグを開始しました」の帯が消えると、ページの位置がずれる**：画面の座標でクリックするときは、直前に撮った画面で位置を確かめる
 - **セッションを壊す実験は、拡張機能を使わずに行える**：`fetch` で DUET のページを GET すると、セッションが壊れる（遮断ルールは `main_frame` しか対象にしないため）
 
 ### DUET の見た目を測り直す

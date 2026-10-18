@@ -88,7 +88,7 @@ BetterDuet の設計の前提になる、DUET 側の挙動をまとめた文書�
 | 得点分布、授業公開 | `/kokai/html/` 以下へ、ポップアップで POST する（`callTokutenBunpu`、`callZyugyoKohyo`） |
 | マニュアルや注意事項の PDF | `duet-man.doshisha.ac.jp` や `www.doshisha.ac.jp` をポップアップで開く（`openUrl`） |
 | 郵便番号の検索 | 日本郵便のサイトをポップアップで開く |
-| ファイルのダウンロード | `form1` の POST（`doDownload`、`doDownloadSaveMessage`）。画面は移らず、サーバーの現在の画面も変わらない（E-022） |
+| ファイルのダウンロード | `form1` の POST（`doDownload`、`doDownloadSaveMessage`）。画面は移らず、サーバーの現在の画面も変わらない（E-022）。`checkOnceTime` の二重送信防止を使わないため、ダウンロードのあともリンクはそのまま押せる（E-030） |
 
 ### DUET 自身の「戻る」（goBackN）
 
@@ -147,6 +147,7 @@ DUET のセッションは2層になっています。ログインそのもの�
 | 再読み込み | GET。DUET が読み込み時に `pushState` しているため、POST の再送信にはならず、確認ダイアログも出ない | E-014 |
 | タブの複製 | GET | E-015 |
 | メモリセーバーで破棄されたタブに戻る | GET。破棄されるとタブ ID も変わる | E-016 |
+| 閉じたタブを開き直す（Ctrl+Shift+T） | GET。タブの `sessionStorage` も元に戻る | E-032 |
 | ブラウザの再起動時のタブ復元 | GET（未検証） | |
 
 ### まだ確かめていない候補
@@ -296,6 +297,8 @@ SSO ポータルのタブで `sessionStorage` に値を書いてから、その�
 
 ページ内をまだ一度も操作していない状態で「戻る」を押したときは、2回とも何も起きなかった（遷移も `popstate` もない）。ただし、そのとき Chrome のウィンドウが前面になかった可能性があり、Chrome の「操作なしに追加された履歴を飛ばす」仕組みの影響かどうかは切り分けられていない（未検証）。また、DUET の画面で一度クリックすると、その後スクリプトの送信で開いた画面でも `navigator.userActivation.hasBeenActive` が true のままだった。
 
+ウィンドウが前面にある状態で改めて確かめた結果は E-031 にある。
+
 ### E-027 ログアウトのあとの入場（2026-10-17）
 
 BetterDuet を入れた状態で、DUET のヘッダーの LOGOUT でログアウトしたあと、SSO ポータルから DUET を開いた。
@@ -326,3 +329,41 @@ BetterDuet を入れた状態で、DUET のヘッダーの LOGOUT でログア�
 | `input[type=button]` | 背景 `rgb(221,221,221)` と `/front/images/global/button_bg.png`（`-2px 2px`、繰り返さない。左端に「›」）、枠線 `rgb(204,204,204)`、高さ 20px、角丸なし |
 | `th`（入力欄の見出し） | 背景 `rgb(25,75,125)`、白文字 |
 | 「必須」バッジ | `span.required` の背景画像 `/front/images/global/required_icon.png`（オレンジ地に白文字） |
+
+### E-030 ダウンロードは二重送信防止を使わない（2026-10-19）
+
+タブ1つ、BetterDuet を有効にした Chrome 155 で、最新の画面（登録科目一覧）から「登録科目確認表ダウンロード」を押した。
+
+- ボタンの `onclick` は `doDownloadSaveMessage('form1','doDownload')` で、中身は `_doAction3(window, 'form1', 'doDownload', false, "")`。第4引数が `false` なので、`checkOnceTime` は `mMOnceTimeFlg` を下ろさず、送信後にリンクの `onclick` を `return false` に書き換える処理も通らない
+- 押した直後も `mMOnceTimeFlg` は true のままだった
+- PDF（約 13 KB）が保存され、画面は移らなかった
+- 約1秒後にサイドメニューの「お知らせ」を押すと、エラーにならずに「お知らせ」が開いた
+
+### E-031 一度も操作していないページでは、ツールバーの「戻る」が何もしない（2026-10-19）
+
+Chrome 155。新しいタブを作り、アドレスバーから入場ページを開いた（BetterDuet が着地ページに付け替え、ホームを開き直した）。そのタブには一度も触れず、`navigator.userActivation.hasBeenActive` が false であることを確かめた。Chrome のウィンドウを前面にし、ツールバーの「戻る」を実際のマウス操作で3回押した。
+
+- 「戻る」ボタンは押せる状態だった
+- 3回とも何も起きなかった。`popstate`、Navigation API の `navigate`、`pagehide` のどれも起きず、文書も入れ替わらなかった（`performance.timeOrigin` が同じ）。DUET へのリクエストもない
+- その後、同じタブでサイドメニューの「よくある質問」を押してから「戻る」を押すと、BACK-002 のとおりホームが開いた
+- 別のタブ（ページ内を操作済み）では、ホームで「戻る」を押すと BACK-003 のとおり NOTICE-BACK-1 が出た
+
+Chrome が「操作なしに追加された履歴」を飛ばす仕組みにより、戻り先がなくなっていると考えられる（推測。Chrome の内部の判定は確かめていない）。どちらにしても、セッションは壊れない。
+
+### E-032 閉じたタブを Ctrl+Shift+T で開き直すと、sessionStorage も戻る（2026-10-19）
+
+Chrome 155、BetterDuet を有効にした状態。DUET のタブを3つ開き、そのうち1つで「推奨環境」（`FB01801G`）を開いてから、そのタブを閉じた。本物のキー入力の Ctrl+Shift+T で開き直した。
+
+- 開き直したタブの GET は着地ページ（`/betterduet-landing?from=fb/fb020/FB02001G.html`）に付け替えられ、DUET には届かなかった
+- 閉じる前の `sessionStorage` の記録（履歴はホーム → 推奨環境）が残っており、「推奨環境」が開き直された。記録のタブ ID は、新しいタブの ID に書き換わった
+- ほかの DUET のタブはそのまま使えた
+
+ブラウザの再起動時の復元は、この実験では確かめていない。
+
+### E-033 ログアウトのあと、fetch での入り直しがそのまま成功した（2026-10-19）
+
+Chrome 155、BetterDuet を有効にした状態。DUET のタブを3つ開き、1つで LOGOUT を押して確認ダイアログで OK を押した。別のタブでメニューを押すと NOTICE-TAB-2 が出た（TAB-005）。続けて、ログアウトしたタブのアドレスバーから入場ページを開いた。
+
+- 着地ページを経て、`fetch` での入り直し（GUARD-003）がそのまま成功し、「お知らせ」が開いた
+- 例外の URL（`FB01090G.html?betterduet=sso`）への遷移は履歴に現れなかった。今回も Shibboleth のログインは残っていたと考えられる
+- E-027 の1回目のように、ログアウトで Shibboleth のログインまで終わる条件は分かっていない（未検証）
