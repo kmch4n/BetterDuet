@@ -8,6 +8,7 @@ BetterDuet を開発し、実際の DUET で確かめるための手順をまと
 
 - v0.1.0：仕様の全要件を実装済み。CORE-005（最新のタブでのダウンロード）は 2026-10-19 に実機で確認し、Implemented にした
 - 2026-10-17 に v0.1.0 を GitHub Releases で公開した
+- 2026-10-19 に v0.2.0 を公開した。拡張機能のアイコンの追加のほか、Service Worker のテストと GitHub Actions の CI を足した
 - 確かめきれていないことは [product.md](spec/product.md) の「確かめきれていないこと」にある
 
 ## 自動テスト
