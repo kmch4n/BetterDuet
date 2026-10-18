@@ -17,6 +17,8 @@ node --test tests/*.test.js
 for f in extension/*.js extension/content/*.js; do node --check "$f"; done
 ```
 
+GitHub Actions（`.github/workflows/test.yml`）も、`main` への push と Pull Request のたびに、テスト、構文、`manifest.json` と `rules.json` の JSON を確かめます。Prettier による書式の確認は、`.prettierrc` と今のコードの書式が合っていないため、まだ入れていません（#8）。
+
 | テスト | 対象 |
 |---|---|
 | `tests/core.test.js` | `core.js` の純粋な関数（送信の判定、履歴、着地先、ログアウトの判定など） |

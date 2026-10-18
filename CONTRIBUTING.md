@@ -90,6 +90,8 @@ node --test tests/*.test.js
 node --check extension/path/to/changed-file.js
 ```
 
+同じ確認は、`main` への push と Pull Request のたびに GitHub Actions（`.github/workflows/test.yml`）でも実行されます。CI が確かめるのは、テスト、すべての JavaScript の構文、`manifest.json` と `rules.json` の JSON の構文です。
+
 あわせて、変更が関係する DUET の画面で実際に動かして確かめてください。複数のタブを開いた状態も確認対象です。
 
 ## Pull Request
