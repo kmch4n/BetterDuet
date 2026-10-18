@@ -21,10 +21,11 @@ for f in extension/*.js extension/content/*.js; do node --check "$f"; done
 |---|---|
 | `tests/core.test.js` | `core.js` の純粋な関数（送信の判定、履歴、着地先、ログアウトの判定など） |
 | `tests/early-hook.test.js` | `early-hook.js` を `node:vm` で動かし、送信の横取り、書き換え、タイムアウト、ログアウトの待ち合わせ、`popstate` を確かめる |
+| `tests/background.test.js` | `background.js` を `node:vm` で動かし、偽の `chrome` と時計を使って、送信の判断、順番待ち、ダウンロードの3秒、ログアウト、入り直し、起動時のジョブの扱いを確かめる |
 | `tests/rules.test.js` | `rules.json` の遮断と例外の範囲 |
 | `tests/manifest.test.js` | 権限、ホスト権限、参照しているファイルの存在 |
 
-Service Worker（`background.js`）は `chrome.*` に依存するため、自動テストがありません。変えたときは、偽の `chrome` オブジェクトを使った使い捨ての検証スクリプトをリポジトリの外で書いて動かすか、実機で確かめてください。
+`tests/background.test.js` の偽の `chrome` は、`runtime.onMessage`、`runtime.onConnect`、`storage.session`、`tabs.onRemoved` だけを持ちます。`background.js` でほかの `chrome.*` を使い始めたら、テストの偽物にも足してください。テストで確かめられるのは Service Worker の中の判断と状態だけなので、ページとのやり取りを変えたときは実機でも確かめてください。
 
 ## 実機での確認（人が行う場合）
 
