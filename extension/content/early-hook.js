@@ -1,6 +1,6 @@
 // MAIN world, document_start. Runs before DUET's own scripts (plan 7.1).
-// Cannot use core.js: the constants below are inlined and must stay identical to extension/core.js
-// (tests/early-hook.test.js checks the logout pattern).
+// Cannot use core.js: DUET_FORM_IDS, LOGOUT_PATTERN and ACK_TIMEOUT_MS are inlined and must stay
+// identical to extension/core.js (tests/early-hook.test.js checks each of them).
 (() => {
     "use strict";
 

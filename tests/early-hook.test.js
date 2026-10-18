@@ -115,6 +115,18 @@ test("CORE-006: the inlined logout pattern equals BetterDuetCore.LOGOUT_PATTERN"
     assert.equal(Core.LOGOUT_PATTERN.flags, "i");
 });
 
+test("CORE-004: the inlined DUET_FORM_IDS equals BetterDuetCore.DUET_FORM_IDS", () => {
+    const match = /const DUET_FORM_IDS = (\[[^\]]*\]);/.exec(HOOK_SOURCE);
+    assert.ok(match, "DUET_FORM_IDS literal not found in early-hook.js");
+    assert.deepEqual(JSON.parse(match[1]), [...Core.DUET_FORM_IDS]);
+});
+
+test("CORE-004: the inlined ACK_TIMEOUT_MS equals BetterDuetCore.ACK_TIMEOUT_MS", () => {
+    const match = /const ACK_TIMEOUT_MS = (\d+);/.exec(HOOK_SOURCE);
+    assert.ok(match, "ACK_TIMEOUT_MS literal not found in early-hook.js");
+    assert.equal(Number(match[1]), Core.ACK_TIMEOUT_MS);
+});
+
 test("CORE-006: a logout XHR waits for logout:ack, other XHRs send at once", () => {
     const env = makeEnv();
     const xhr = new env.sandbox.XMLHttpRequest();
