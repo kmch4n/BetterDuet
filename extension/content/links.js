@@ -1,4 +1,4 @@
-// ISOLATED world, /gakusei/html/* (LINK-001/002).
+// ISOLATED world, /gakusei/html/* (LINK-001/002, SET-005).
 // Turns DUET's `openUrl` popup links into plain links that open in a new tab. Nothing is sent to DUET.
 (() => {
     "use strict";
@@ -55,9 +55,16 @@
         true,
     );
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", rewriteLinks, { once: true });
-    } else {
-        rewriteLinks();
-    }
+    const alive = typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.id);
+    C.readSettings(alive ? chrome.storage.local : null).then((settings) => {
+        // SET-005: with the switch off, DUET keeps its own popup.
+        if (!settings.links) {
+            return;
+        }
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", rewriteLinks, { once: true });
+        } else {
+            rewriteLinks();
+        }
+    });
 })();

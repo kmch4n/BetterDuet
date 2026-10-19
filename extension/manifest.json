@@ -10,6 +10,7 @@
         "48": "icons/icon-48.png",
         "128": "icons/icon-128.png"
     },
+    "action": { "default_popup": "popup.html", "default_title": "BetterDuet の設定" },
     "permissions": ["storage", "declarativeNetRequest"],
     "host_permissions": ["*://duet.doshisha.ac.jp/*"],
     "background": { "service_worker": "background.js" },

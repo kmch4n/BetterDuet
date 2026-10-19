@@ -10,6 +10,7 @@ BetterDuet を開発し、実際の DUET で確かめるための手順をまと
 - 2026-10-17 に v0.1.0 を GitHub Releases で公開した
 - 2026-10-19 に v0.2.0 を公開した。拡張機能のアイコンの追加のほか、Service Worker のテストと GitHub Actions の CI を足した
 - 2026-10-19 に v0.3.0 を公開した。外部リンクを新しいタブで開く機能（LINK-001/002）、ダウンロード後の「戻る」の修正（BACK-002）、Chrome 111 以降の指定（CORE-009）を含む
+- 2026-10-19 に、設定画面と機能ごとのオン・オフ（SET-001〜007）を実装した。まだリリースしていない
 - 確かめきれていないことは [product.md](spec/product.md) の「確かめきれていないこと」にある
 
 ## 自動テスト
@@ -30,14 +31,14 @@ GitHub Actions（`.github/workflows/test.yml`）も、`main` への push と Pul
 
 | テスト | 対象 |
 |---|---|
-| `tests/core.test.js` | `core.js` の純粋な関数（送信の判定、履歴、着地先、ログアウトの判定など） |
-| `tests/early-hook.test.js` | `early-hook.js` を `node:vm` で動かし、送信の横取り、書き換え、タイムアウト、ログアウトの待ち合わせ、`popstate` を確かめる |
-| `tests/background.test.js` | `background.js` を `node:vm` で動かし、偽の `chrome` と時計を使って、送信の判断、順番待ち、ダウンロードの3秒、ログアウト、入り直し、起動時のジョブの扱いを確かめる |
-| `tests/links.test.js` | `content/links.js` を `node:vm` で動かし、`openUrl` のリンクの書き換えと、クリックを DUET の処理まで届かせないことを確かめる |
+| `tests/core.test.js` | `core.js` の純粋な関数（送信の判定、履歴、着地先、ログアウトの判定、設定の読み取りなど） |
+| `tests/early-hook.test.js` | `early-hook.js` を `node:vm` で動かし、送信の横取り、書き換え、タイムアウト、ログアウトの待ち合わせ、`popstate`、オフにしたときに DUET の `popstate` の処理を返すことを確かめる |
+| `tests/background.test.js` | `background.js` を `node:vm` で動かし、偽の `chrome` と時計を使って、送信の判断、順番待ち、ダウンロードの3秒、ログアウト、入り直し、起動時のジョブの扱い、遮断ルールを設定に合わせることを確かめる |
+| `tests/links.test.js` | `content/links.js` を `node:vm` で動かし、`openUrl` のリンクの書き換えと、クリックを DUET の処理まで届かせないこと、設定でオフにしたら何もしないことを確かめる |
 | `tests/rules.test.js` | `rules.json` の遮断と例外の範囲 |
-| `tests/manifest.test.js` | 権限、ホスト権限、参照しているファイルの存在 |
+| `tests/manifest.test.js` | 権限、ホスト権限、参照しているファイルの存在、設定画面のファイルとスイッチ |
 
-`tests/background.test.js` の偽の `chrome` は、`runtime.onMessage`、`runtime.onConnect`、`storage.session`、`tabs.onRemoved` だけを持ちます。`background.js` でほかの `chrome.*` を使い始めたら、テストの偽物にも足してください。テストで確かめられるのは Service Worker の中の判断と状態だけなので、ページとのやり取りを変えたときは実機でも確かめてください。
+`tests/background.test.js` の偽の `chrome` は、`runtime.onMessage`、`runtime.onConnect`、`runtime.onInstalled`、`runtime.onStartup`、`storage.session`、`storage.local`（`get` だけ）、`storage.onChanged`、`declarativeNetRequest.updateEnabledRulesets`、`tabs.onRemoved` だけを持ちます。`background.js` でほかの `chrome.*` を使い始めたら、テストの偽物にも足してください。テストで確かめられるのは Service Worker の中の判断と状態だけなので、ページとのやり取りを変えたときは実機でも確かめてください。
 
 ## 実機での確認（人が行う場合）
 
@@ -91,6 +92,9 @@ pwsh tools/chrome-ext.ps1 -Action disable -Name "BetterDuet Probe"
 - **SSO 切れ（GUARD-004）は、DUET 側の Shibboleth のログインだけを切って作れる**：LOGOUT のあと、DUET のページで `fetch('/Shibboleth.sso/Logout', { credentials: 'include', redirect: 'manual' })` を呼ぶ。大学の SSO（ex-tic）のログインは残るので、パスワードを入れ直さずに SSO の往復を確かめられる（E-035）。ex-tic まで切れるとパスワードが要るので、利用者がいるときに行う
 - **`chrome://restart` は、最後に使ったプロフィールのウィンドウしか開き直さないことがある**：Univ のプロフィール（`Profile 1`）は、`chrome.exe --profile-directory="Profile 1" --restore-last-session` で前回のタブごと開き直せる（E-034）。再起動のあと、Claude in Chrome は再起動の前に作ったタブグループを操作できない
 - **DevTools のコンソールには、自動操作の文字入力が届かないことがある**：2026-10-19 は `SendKeys` で入力しても何も入らなかった。ページの中の値は、なるべく Claude in Chrome の JavaScript 実行で読む
+- **設定画面は、ツールバーのアイコンを本物のマウスで押して開く**：Claude in Chrome は `chrome-extension://` のページを開けない。UI Automation でツールバーの「BetterDuet の設定」ボタンを探して押す（名前の後ろにサイトのアクセスの説明が付くことがあるので、前方一致で探す）。設定画面は OS の画面キャプチャで撮れ、スイッチも本物のクリックで切り替えられる。閉じるときは Esc
+- **DUET の「戻る」の警告は `alert`**：「戻る」をオフにした画面で「戻る」を押すと出て、Claude in Chrome の JavaScript 実行が止まる。警告が出ている間は JavaScript を実行せず、OS の画面キャプチャで確かめ、本物の Enter で閉じる（E-037）
+- **Claude in Chrome のタブを閉じると、グループごと外れることがある**：2026-10-19 は、SSO ポータルのタブを閉じたあと、DUET のタブで画面を移ったところでグループがなくなった。外れたタブは閉じられないので、確認が終わるまでタブを閉じないでおく
 - **セッションを壊す実験は、拡張機能を使わずに行える**：`fetch` で DUET のページを GET すると、セッションが壊れる（遮断ルールは `main_frame` しか対象にしないため）
 
 ### DUET の見た目を測り直す

@@ -527,3 +527,37 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
         await endActive(active.kind === "revive");
     }
 });
+
+// ---------------------------------------------------------------------------
+// Settings (SET-003/007)
+// ---------------------------------------------------------------------------
+
+let rulesetChain = Promise.resolve();
+
+/** Turns the GET-blocking ruleset on or off to match the protection switch. Calls run one at a time. */
+function syncGuardRuleset() {
+    rulesetChain = rulesetChain
+        .then(async () => {
+            const settings = await C.readSettings(chrome.storage.local);
+            const ids = [C.GUARD_RULESET_ID];
+            await chrome.declarativeNetRequest.updateEnabledRulesets(
+                settings.protection ? { enableRulesetIds: ids } : { disableRulesetIds: ids },
+            );
+            log("guard ruleset", settings.protection ? "on" : "off");
+        })
+        .catch(() => log("ruleset sync failed"));
+    return rulesetChain;
+}
+
+// An update can restore the manifest's default (enabled), so re-apply the switch on every start.
+chrome.runtime.onInstalled.addListener(() => {
+    void syncGuardRuleset();
+});
+chrome.runtime.onStartup.addListener(() => {
+    void syncGuardRuleset();
+});
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes[C.SETTINGS_KEY]) {
+        void syncGuardRuleset();
+    }
+});

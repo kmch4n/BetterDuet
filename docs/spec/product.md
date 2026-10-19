@@ -23,8 +23,9 @@ DUET のサーバーは、セッションごとに「現在の画面」を1つ�
 | セッションの保護と復帰 | [features/session-guard.md](features/session-guard.md) | 再読み込みや休止したタブへの切り替えで壊れない。壊れても SSO ポータルを通らずに戻れる |
 | ブラウザの「戻る」 | [features/back-navigation.md](features/back-navigation.md) | 「戻る」で1つ前の画面に戻れる |
 | 外部リンクを新しいタブで開く | [features/external-links.md](features/external-links.md) | 参照URLやマニュアルの PDF が、別ウィンドウではなく新しいタブで開く。右クリックの「新しいタブで開く」でも壊れない（v0.3.0 で追加） |
+| 設定画面と機能のオン・オフ | [features/settings.md](features/settings.md) | ツールバーのアイコンから、上の機能を1つずつ切れる。誤作動したときに、拡張機能を外さずに使い続けられる |
 
-最初の3つの機能は、[architecture.md](architecture.md) の共通の仕組み（最新の画面の記録と、送信の一本化）の上に作ります。外部リンクの機能は、画面のリンクを書き換えるだけで、DUET には何も送りません。
+最初の3つの機能は、[architecture.md](architecture.md) の共通の仕組み（最新の画面の記録と、送信の一本化）の上に作ります。外部リンクの機能は、画面のリンクを書き換えるだけで、DUET には何も送りません。設定画面は、どの機能を使うかを保存するだけで、これも DUET には何も送りません。
 
 ## 全機能に共通する原則
 

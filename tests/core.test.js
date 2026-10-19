@@ -423,3 +423,41 @@ test("LINK-002 externalLinkHref rejects non-http(s), malformed and DUET URLs", (
     assert.equal(core.externalLinkHref("https://duet.doshisha.ac.jp/gakusei/html/fb/fb020/FB02001G.html"), null);
     assert.equal(core.externalLinkHref("HTTPS://DUET.DOSHISHA.AC.JP/x"), null);
 });
+
+test("SET-002: settings are read as three booleans, defaulting to on", () => {
+    const all = { protection: true, back: true, links: true };
+    assert.deepEqual(core.normalizeSettings(undefined), all);
+    assert.deepEqual(core.normalizeSettings(null), all);
+    assert.deepEqual(core.normalizeSettings([false]), all);
+    assert.deepEqual(core.normalizeSettings("off"), all);
+    assert.deepEqual(core.normalizeSettings({ protection: "false", back: 0, links: null }), all);
+    assert.deepEqual(core.normalizeSettings({ links: false, extra: true }), {
+        protection: true,
+        back: true,
+        links: false,
+    });
+    assert.deepEqual(core.DEFAULT_SETTINGS, all);
+});
+
+test("SET-003: Back is off whenever protection is off; the stored value is kept for later", () => {
+    assert.deepEqual(core.effectiveSettings({ protection: false, back: true }), {
+        protection: false,
+        back: false,
+        links: true,
+    });
+    assert.equal(core.effectiveSettings({ protection: true, back: false }).back, false);
+    assert.equal(core.normalizeSettings({ protection: false, back: true }).back, true);
+});
+
+test("SET-002: readSettings falls back to the defaults when storage fails", async () => {
+    const stored = { [core.SETTINGS_KEY]: { protection: false } };
+    assert.deepEqual(await core.readSettings({ get: async () => stored }), {
+        protection: false,
+        back: false,
+        links: true,
+    });
+    const all = { protection: true, back: true, links: true };
+    assert.deepEqual(await core.readSettings({ get: async () => ({}) }), all);
+    assert.deepEqual(await core.readSettings({ get: async () => Promise.reject(new Error("x")) }), all);
+    assert.deepEqual(await core.readSettings(null), all);
+});

@@ -1,7 +1,8 @@
 "use strict";
 
 // Runs extension/content/early-hook.js in node:vm with small fakes (plan section 9).
-// Covers CORE-004 (submit hook), CORE-006 (logout pattern), BACK-001/002 (popstate).
+// Covers CORE-004 (submit hook), CORE-006 (logout pattern), BACK-001/002 (popstate),
+// SET-003/004 (giving DUET its Back handling back when a switch is off).
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -268,7 +269,7 @@ test("TAB-002: submit:restore re-enables links, the once-flag and cursors withou
     assert.deepEqual(cursor, ["cursor", ""]);
 });
 
-test("BACK-001: a page popstate registration is dropped, the hook's own one stays", () => {
+test("BACK-001: a page popstate registration is held back, the hook's own one stays", () => {
     const env = makeEnv();
     const pageListener = () => {};
     env.win.addEventListener("popstate", pageListener);
@@ -416,4 +417,58 @@ test("CORE-004: nav:prepare clears DUET's forceClose flag", () => {
     env.sandbox.forceClose = true;
     env.deliver("nav:prepare", {});
     assert.equal(env.sandbox.forceClose, false);
+});
+
+test("SET-004: back:disable registers DUET's held popstate listeners and stops the hook's Back", () => {
+    const env = makeEnv();
+    const pageListener = () => {};
+    const options = { once: false };
+    env.win.addEventListener("popstate", pageListener, options);
+    env.deliver("back:disable", {});
+    const popstate = env.sandbox.__listeners.popstate;
+    assert.equal(popstate.length, 2);
+    assert.equal(popstate[1], pageListener);
+
+    const later = () => {};
+    env.win.addEventListener("popstate", later);
+    assert.equal(popstate[2], later, "later registrations pass through");
+
+    popstate[0]({});
+    assert.deepEqual(env.pushStates, [], "the hook no longer re-pushes");
+    assert.equal(env.sent("back:requested").length, 0);
+
+    const [onKeydown] = env.sandbox.__listeners.keydown;
+    let stopped = false;
+    onKeydown({ altKey: true, key: "ArrowLeft", stopPropagation: () => (stopped = true) });
+    assert.equal(stopped, false, "Alt+Left reaches DUET");
+});
+
+test("SET-004: with Back off, submits are still intercepted (protection stays on)", () => {
+    const env = makeEnv();
+    env.deliver("back:disable", {});
+    const { form } = makeForm(env, "menuform", "goHome");
+    form.submit();
+    assert.equal(env.nativeSubmits.length, 0);
+    assert.equal(env.sent("submit:intercepted").length, 1);
+});
+
+test("SET-003: hook:disable registers the popstate listeners held so far, exactly once", () => {
+    const env = makeEnv();
+    const pageListener = () => {};
+    env.win.addEventListener("popstate", pageListener);
+    env.deliver("hook:disable", {});
+    env.deliver("back:disable", {});
+    const popstate = env.sandbox.__listeners.popstate;
+    assert.equal(popstate.filter((fn) => fn === pageListener).length, 1);
+});
+
+test("SET-003: the ack timeout also gives DUET its held popstate listeners", () => {
+    const env = makeEnv();
+    const pageListener = () => {};
+    env.win.addEventListener("popstate", pageListener);
+    const { form } = makeForm(env, "menuform", "goHome");
+    form.submit();
+    env.flush(Core.ACK_TIMEOUT_MS);
+    assert.equal(env.nativeSubmits.length, 1);
+    assert.ok(env.sandbox.__listeners.popstate.includes(pageListener));
 });

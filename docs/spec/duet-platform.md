@@ -178,7 +178,7 @@ DUET のセッションは2層になっています。ログインそのもの�
 
 2026-10-17 に `global.js` と `common.js` を読んで確認しました。
 
-- **戻る**：`history.pushState` と `popstate` で「戻る」を検知し、警告を出して止めます
+- **戻る**：`history.pushState` と `popstate` で「戻る」を検知し、`alert` で警告を出して止めます（E-037）
 - **キー操作**：`document` の keydown で、F5、Esc、F11、F12、Ctrl+D/N/R/S/T/U/W、Shift+F10、Alt+←/→、入力欄以外での Backspace を無効にしています。入力欄で Enter を押すと、`id` が `enterDodoZikko` で終わる要素を押したことになります
 - **二重送信の防止**：`checkOnceTime` により、1つの画面から送信できるのは1回だけです。送信後はすべてのリンクの `onclick` が `return false` に書き換わります
 - **破棄の確認**：入力中に画面を離れようとすると、`hakiCheck` / `menuHakiCheck` が確認ダイアログを出します
@@ -395,3 +395,11 @@ Chrome 155、BetterDuet を有効にした状態。
 - `openUrl(url)` は `openUrlWithWindowName(url, "popupWindow_" + window.name)` を呼ぶ。`http://` か `https://` で始まらなければ「無効なURLです」と出して開かない。開くときは `window.open(url, 名前, "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,copyhistory=yes")` なので、ツールバーのない別ウィンドウになる
 - 「参照URL」を右クリックして「新しいタブで開く」を押すと、新しいタブは `href` を今の画面の URL に足した `…/FB03001G.html?newwindow=true` への GET になった。BetterDuet が着地ページに付け替え、新しいタブには記録がないためホームを開いた。元のタブ（メッセージ詳細）は古い画面になった
 - BetterDuet がなければ、この GET は DUET に届き、E-002 と同じくセッションが壊れると考えられる（今回は拡張機能を切っての再現はしていない）
+
+### E-037 DUET 自身の「戻る」の警告と、あとから登録した popstate の処理（2026-10-19）
+
+Chrome 155。BetterDuet の「ブラウザの『戻る』」（SET-004）、または「タブとセッションの保護」（SET-003）をオフにして読み込んだ画面で試した。早期フックが取っておいた DUET の `popstate` の処理は、DUET のスクリプトより後、設定を読み終えた時点で登録される。
+
+- ツールバーの「戻る」を本物のマウスで押すと、`alert` で「ブラウザの「戻る」ボタンは利用できません。」と英語の同じ文が出た。OK を押すと、画面はそのまま（マニュアル）で、続けてサイドメニューも使えた。DUET の `popstate` の処理は、遅れて登録しても働く
+- 同じ画面で Alt+← を本物のキー入力で押すと、何も起きなかった（警告も出ない）。DUET の keydown の処理が Alt+← を止めるため（「画面側の制限」のとおり）
+- 「タブとセッションの保護」をオフにして（遮断ルールも無効）ツールバーの再読み込みを押すと、GET が DUET に届き、「認証エラー」の画面になった（E-002 と同じ）

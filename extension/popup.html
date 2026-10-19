@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>BetterDuet 設定</title>
+        <link rel="stylesheet" href="popup.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="rail">
+                <div class="brand">
+                    <img class="brand-mark" src="icons/icon-128.png" width="32" height="32" alt="" />
+                    <span class="brand-text">
+                        <span class="brand-name">BetterDuet</span>
+                        <span class="brand-version" id="version"></span>
+                    </span>
+                </div>
+
+                <nav class="categories" role="tablist" aria-orientation="vertical" aria-label="設定のカテゴリ">
+                    <button
+                        type="button"
+                        class="category"
+                        role="tab"
+                        id="tab-protection"
+                        aria-controls="panel-protection"
+                        data-category="protection"
+                    >
+                        <span class="category-name">保護と操作</span>
+                        <span class="category-count" data-count-for="protection"></span>
+                    </button>
+                    <button
+                        type="button"
+                        class="category"
+                        role="tab"
+                        id="tab-links"
+                        aria-controls="panel-links"
+                        data-category="links"
+                    >
+                        <span class="category-name">リンク</span>
+                        <span class="category-count" data-count-for="links"></span>
+                    </button>
+                </nav>
+
+                <div class="rail-links">
+                    <a href="https://github.com/kmch4n/BetterDuet#readme" target="_blank" rel="noopener">使い方</a>
+                    <a href="https://github.com/kmch4n/BetterDuet/issues" target="_blank" rel="noopener"
+                        >不具合の報告</a
+                    >
+                </div>
+            </aside>
+
+            <main class="content">
+                <section
+                    class="panel"
+                    role="tabpanel"
+                    id="panel-protection"
+                    aria-labelledby="tab-protection"
+                    data-category="protection"
+                >
+                    <header class="panel-head">
+                        <h2 class="panel-title">保護と操作</h2>
+                        <p class="panel-summary">DUET のログアウトを防ぐ仕組みと、ブラウザの「戻る」</p>
+                    </header>
+                    <ul class="settings">
+                        <li class="setting">
+                            <label class="setting-row" for="protection">
+                                <span class="setting-text">
+                                    <span class="setting-name">タブとセッションの保護</span>
+                                    <span class="setting-desc"
+                                        >複数のタブ、再読み込み、休止したタブへの切り替えで DUET
+                                        がログアウトしないようにします</span
+                                    >
+                                    <span class="setting-warn" id="protection-warn"
+                                        >オフにすると DUET
+                                        本来の動きに戻り、2つ目のタブや再読み込みでログアウトすることがあります</span
+                                    >
+                                    <span class="setting-note">DUET の画面を次に移ったときから効きます</span>
+                                </span>
+                                <input
+                                    type="checkbox"
+                                    id="protection"
+                                    class="switch"
+                                    role="switch"
+                                    aria-describedby="protection-warn"
+                                />
+                            </label>
+                        </li>
+                        <li class="setting">
+                            <label class="setting-row" for="back">
+                                <span class="setting-text">
+                                    <span class="setting-name">ブラウザの「戻る」</span>
+                                    <span class="setting-desc"
+                                        >「戻る」で、そのタブで1つ前に見ていた画面を開き直します</span
+                                    >
+                                    <span class="setting-lock" id="back-lock" hidden
+                                        >タブとセッションの保護がオフの間は使えません</span
+                                    >
+                                    <span class="setting-note">DUET の画面を次に移ったときから効きます</span>
+                                </span>
+                                <input type="checkbox" id="back" class="switch" role="switch" />
+                            </label>
+                        </li>
+                    </ul>
+                </section>
+
+                <section
+                    class="panel"
+                    role="tabpanel"
+                    id="panel-links"
+                    aria-labelledby="tab-links"
+                    data-category="links"
+                    hidden
+                >
+                    <header class="panel-head">
+                        <h2 class="panel-title">リンク</h2>
+                        <p class="panel-summary">DUET の外のページへのリンクの開き方</p>
+                    </header>
+                    <ul class="settings">
+                        <li class="setting">
+                            <label class="setting-row" for="links">
+                                <span class="setting-text">
+                                    <span class="setting-name">外部リンクを新しいタブで開く</span>
+                                    <span class="setting-desc"
+                                        >参照URLやマニュアルの PDF を、別ウィンドウではなく新しいタブで開きます</span
+                                    >
+                                    <span class="setting-note">DUET の画面を次に移ったときから効きます</span>
+                                </span>
+                                <input type="checkbox" id="links" class="switch" role="switch" />
+                            </label>
+                        </li>
+                    </ul>
+                </section>
+
+                <p class="status" id="status" role="status" aria-live="polite"></p>
+            </main>
+        </div>
+
+        <script src="core.js"></script>
+        <script src="popup.js"></script>
+    </body>
+</html>

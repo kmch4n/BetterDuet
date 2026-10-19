@@ -1,6 +1,6 @@
 "use strict";
 
-// Runs extension/content/links.js in node:vm with a small fake DOM (LINK-001/002).
+// Runs extension/content/links.js in node:vm with a small fake DOM (LINK-001/002, SET-005).
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -30,8 +30,15 @@ function element(attrs, extra) {
     );
 }
 
+/** Lets the settings read and the rewrite that follows it finish. */
+async function settle() {
+    for (let i = 0; i < 5; i++) {
+        await new Promise((resolve) => setImmediate(resolve));
+    }
+}
+
 /** Builds a page with the given anchors and URL holders, runs links.js, and returns the anchors. */
-function run({ anchors, byId = {}, byClass = {} }) {
+async function run({ anchors, byId = {}, byClass = {}, settings }) {
     const document = {
         readyState: "complete",
         querySelectorAll: (selector) => {
@@ -50,9 +57,12 @@ function run({ anchors, byId = {}, byClass = {} }) {
             clickListeners.push(fn);
         },
     };
-    const context = vm.createContext({ document, window, URL });
+    const local = settings === undefined ? {} : { "betterduet:settings": settings };
+    const chrome = { runtime: { id: "ext" }, storage: { local: { get: async (key) => ({ [key]: local[key] }) } } };
+    const context = vm.createContext({ document, window, URL, chrome });
     vm.runInContext(CORE_SOURCE, context);
     vm.runInContext(LINKS_SOURCE, context, { filename: LINKS_PATH });
+    await settle();
     /** Fires a capture-phase click on `target`; returns whether propagation was stopped. */
     const click = (target) => {
         let stopped = false;
@@ -64,7 +74,11 @@ function run({ anchors, byId = {}, byClass = {} }) {
         clickListeners.forEach((fn) => fn(event));
         return stopped;
     };
-    return { anchors, click, again: () => vm.runInContext(LINKS_SOURCE, context, { filename: LINKS_PATH }) };
+    const again = async () => {
+        vm.runInContext(LINKS_SOURCE, context, { filename: LINKS_PATH });
+        await settle();
+    };
+    return { anchors, click, again };
 }
 
 /** Adds closest() so the click guard can find the link from the clicked node. */
@@ -76,48 +90,61 @@ function withClosest(anchor) {
 
 const duetLink = (onclick) => element({ href: "?newwindow=true#", target: "_blank", onclick });
 
-test("LINK-001: the reference-URL link becomes a plain new-tab link", () => {
+test("LINK-001: the reference-URL link becomes a plain new-tab link", async () => {
     const anchor = duetLink("return openUrl($('#sansyoUrlZ1').val());");
-    run({ anchors: [anchor], byId: { sansyoUrlZ1: { value: PANOPTO } } });
+    await run({ anchors: [anchor], byId: { sansyoUrlZ1: { value: PANOPTO } } });
     assert.equal(anchor.getAttribute("href"), PANOPTO);
     assert.equal(anchor.getAttribute("target"), "_blank");
     assert.equal(anchor.getAttribute("rel"), "noopener noreferrer");
     assert.equal(anchor.hasAttribute("onclick"), false);
 });
 
-test("LINK-001: a manual link reads the URL from the hidden span's text", () => {
+test("LINK-001: a manual link reads the URL from the hidden span's text", async () => {
     const anchor = duetLink("return openUrl($('.linkUrl0').html())");
-    run({ anchors: [anchor], byClass: { linkUrl0: { textContent: "  " + MANUAL + "\n" } } });
+    await run({ anchors: [anchor], byClass: { linkUrl0: { textContent: "  " + MANUAL + "\n" } } });
     assert.equal(anchor.getAttribute("href"), MANUAL);
     assert.equal(anchor.hasAttribute("onclick"), false);
 });
 
-test("LINK-001: a click on a rewritten link never reaches DUET's onclick, other clicks do", () => {
+test("LINK-001: a click on a rewritten link never reaches DUET's onclick, other clicks do", async () => {
     const rewritten = withClosest(duetLink("return openUrl($('#u').val());"));
     const untouched = withClosest(duetLink("return callSyllabusInfo('2026', '1');"));
-    const page = run({ anchors: [rewritten, untouched], byId: { u: { value: PANOPTO } } });
+    const page = await run({ anchors: [rewritten, untouched], byId: { u: { value: PANOPTO } } });
     assert.equal(page.click(rewritten), true);
     assert.equal(page.click(untouched), false);
     assert.equal(page.click({}), false);
 });
 
-test("LINK-001: running twice changes nothing more", () => {
+test("LINK-001: running twice changes nothing more", async () => {
     const anchor = duetLink("return openUrl($('#u').val());");
-    const page = run({ anchors: [anchor], byId: { u: { value: PANOPTO } } });
+    const page = await run({ anchors: [anchor], byId: { u: { value: PANOPTO } } });
     const before = new Map(anchor.attrs);
-    page.again();
+    await page.again();
     assert.deepEqual(anchor.attrs, before);
 });
 
-test("LINK-002: links that cannot be read or point at DUET keep DUET's popup", () => {
+test("LINK-002: links that cannot be read or point at DUET keep DUET's popup", async () => {
     const missing = duetLink("return openUrl($('#nothere').val());");
     const relative = duetLink("return openUrl($('#rel').val());");
     const duet = duetLink("return openUrl('https://duet.doshisha.ac.jp/gakusei/html/fb/fb020/FB02001G.html');");
     const other = duetLink("return callSyllabusInfo('2026', '1');");
-    run({ anchors: [missing, relative, duet, other], byId: { rel: { value: "/x/y.pdf" } } });
+    await run({ anchors: [missing, relative, duet, other], byId: { rel: { value: "/x/y.pdf" } } });
     for (const anchor of [missing, relative, duet, other]) {
         assert.equal(anchor.getAttribute("href"), "?newwindow=true#");
         assert.equal(anchor.hasAttribute("onclick"), true);
         assert.equal(anchor.hasAttribute("rel"), false);
     }
+});
+
+test("SET-005: with the links switch off, links keep DUET's popup", async () => {
+    const anchor = duetLink("return openUrl($('#u').val());");
+    await run({ anchors: [anchor], byId: { u: { value: PANOPTO } }, settings: { links: false } });
+    assert.equal(anchor.getAttribute("href"), "?newwindow=true#");
+    assert.equal(anchor.hasAttribute("onclick"), true);
+});
+
+test("SET-005: the links switch works whatever the protection switch says", async () => {
+    const anchor = duetLink("return openUrl($('#u').val());");
+    await run({ anchors: [anchor], byId: { u: { value: PANOPTO } }, settings: { protection: false } });
+    assert.equal(anchor.getAttribute("href"), PANOPTO);
 });

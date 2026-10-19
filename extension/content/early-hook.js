@@ -20,6 +20,11 @@
     const LOGOUT_WAIT_MS = 500;
 
     let enabled = true;
+    // BACK-001..004 run only while this is true; page.js turns it off by the user's settings (SET-004).
+    let backEnabled = true;
+    // DUET's own popstate listeners, held back while BetterDuet handles Back (BACK-001).
+    const heldPopstate = [];
+    let popstateReleased = false;
     let nonce = null;
     let reentry = false;
     let nextReqId = 1;
@@ -196,8 +201,24 @@
             return;
         }
         // page.js never acknowledged (gone or broken): behave like plain DUET from now on.
-        enabled = false;
+        disable();
         perform(entry, null);
+    }
+
+    // Hands DUET back its own popstate listeners so its Back warning returns (SET-003/004).
+    function releasePopstate() {
+        if (popstateReleased) {
+            return;
+        }
+        popstateReleased = true;
+        for (const held of heldPopstate.splice(0)) {
+            nativeAdd.call(window, "popstate", held[0], held[1]);
+        }
+    }
+
+    function disable() {
+        enabled = false;
+        releasePopstate();
     }
 
     function onSettleTimeout(reqId) {
@@ -252,7 +273,11 @@
                 window.forceClose = false;
                 break;
             case "hook:disable":
-                enabled = false;
+                disable();
+                break;
+            case "back:disable":
+                backEnabled = false;
+                releasePopstate();
                 break;
             default:
                 break;
@@ -272,14 +297,15 @@
 
     window.addEventListener = function addEventListener(type, listener, options) {
         const onWindow = this === window || this === undefined || this === null;
-        if (enabled && type === "popstate" && onWindow) {
+        if (enabled && backEnabled && type === "popstate" && onWindow) {
+            heldPopstate.push([listener, options]);
             return undefined;
         }
         return nativeAdd.call(onWindow ? window : this, type, listener, options);
     };
 
     nativeAdd.call(window, "popstate", () => {
-        if (!enabled) {
+        if (!enabled || !backEnabled) {
             return;
         }
         history.pushState("push", null, null);
@@ -298,6 +324,7 @@
         (event) => {
             if (
                 enabled &&
+                backEnabled &&
                 event.altKey &&
                 event.key === "ArrowLeft" &&
                 !event.ctrlKey &&

@@ -2,7 +2,8 @@
 
 // Runs extension/background.js in node:vm with a fake chrome.* and a fake clock.
 // Covers CORE-003 (one job at a time), CORE-004 / TAB-001 / TAB-002 (send, rewrite, block),
-// CORE-005 (download settle), CORE-006 / TAB-005 (logout), GUARD-003 (revive and its loop guard).
+// CORE-005 (download settle), CORE-006 / TAB-005 (logout), GUARD-003 (revive and its loop guard),
+// SET-007 (the GET-blocking ruleset follows the protection switch).
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -45,12 +46,15 @@ async function settle() {
     }
 }
 
-async function makeEnv(stored) {
-    const env = { now: 1_000_000, timers: [], nextTimer: 1, store: {}, nextJob: 1 };
+async function makeEnv(stored, settings) {
+    const env = { now: 1_000_000, timers: [], nextTimer: 1, store: {}, local: {}, nextJob: 1, rulesetCalls: [] };
     if (stored) {
         env.store[STATE_KEY] = JSON.parse(JSON.stringify(stored));
     }
-    const listeners = { message: null, connect: null, removed: null };
+    if (settings !== undefined) {
+        env.local[Core.SETTINGS_KEY] = settings;
+    }
+    const listeners = { message: null, connect: null, removed: null, installed: null, startup: null, changed: null };
 
     const sandbox = {
         console,
@@ -69,8 +73,19 @@ async function makeEnv(stored) {
             runtime: {
                 onMessage: { addListener: (fn) => (listeners.message = fn) },
                 onConnect: { addListener: (fn) => (listeners.connect = fn) },
+                onInstalled: { addListener: (fn) => (listeners.installed = fn) },
+                onStartup: { addListener: (fn) => (listeners.startup = fn) },
+            },
+            declarativeNetRequest: {
+                updateEnabledRulesets: async (options) => {
+                    env.rulesetCalls.push(JSON.parse(JSON.stringify(options)));
+                },
             },
             storage: {
+                onChanged: { addListener: (fn) => (listeners.changed = fn) },
+                local: {
+                    get: async (key) => (key in env.local ? { [key]: env.local[key] } : {}),
+                },
                 session: {
                     get: async (key) => (key in env.store ? { [key]: JSON.parse(JSON.stringify(env.store[key])) } : {}),
                     set: async (items) => {
@@ -118,6 +133,15 @@ async function makeEnv(stored) {
         await settle();
     };
     env.state = () => env.store[STATE_KEY];
+    env.fire = async (name, ...args) => {
+        listeners[name](...args);
+        await settle();
+    };
+    /** Saves settings the way the popup does and fires storage.onChanged. */
+    env.saveSettings = async (value) => {
+        env.local[Core.SETTINGS_KEY] = value;
+        await env.fire("changed", { [Core.SETTINGS_KEY]: { newValue: value } }, "local");
+    };
     env.load = async (tabId, screenPath) => {
         const reply = await env.send(
             { type: "page:loaded", screenId: Core.screenIdFromAction(screenPath), forms: formsAt(screenPath) },
@@ -391,4 +415,27 @@ test("CORE-008: messages from outside a tab and unknown types are rejected", asy
     assert.equal(unknown.type, "error");
     const noTab = await env.send({ type: "state:get" }, undefined);
     assert.equal(noTab.type, "error");
+});
+
+test("SET-007: the ruleset follows the protection switch on install, startup, and change", async () => {
+    const env = await makeEnv(undefined, { protection: false, back: true, links: true });
+    assert.deepEqual(env.rulesetCalls, [], "nothing happens before an event");
+    await env.fire("installed", { reason: "update" });
+    assert.deepEqual(env.rulesetCalls.pop(), { disableRulesetIds: ["guard"] });
+    await env.saveSettings({ protection: true, back: true, links: true });
+    assert.deepEqual(env.rulesetCalls.pop(), { enableRulesetIds: ["guard"] });
+    await env.saveSettings({ protection: true, back: false, links: false });
+    assert.deepEqual(env.rulesetCalls.pop(), { enableRulesetIds: ["guard"] });
+    env.local[Core.SETTINGS_KEY] = { protection: false };
+    await env.fire("startup");
+    assert.deepEqual(env.rulesetCalls.pop(), { disableRulesetIds: ["guard"] });
+});
+
+test("SET-007: missing settings keep the ruleset on; other storage changes are ignored", async () => {
+    const env = await makeEnv();
+    await env.fire("startup");
+    assert.deepEqual(env.rulesetCalls, [{ enableRulesetIds: ["guard"] }]);
+    await env.fire("changed", { other: { newValue: 1 } }, "local");
+    await env.fire("changed", { [Core.SETTINGS_KEY]: { newValue: {} } }, "sync");
+    assert.equal(env.rulesetCalls.length, 1);
 });

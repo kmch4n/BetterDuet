@@ -47,6 +47,17 @@
     document.addEventListener("betterduet:hook-ready", sendInit);
     sendInit();
 
+    // The settings this page was loaded with; later changes wait for the next screen (SET-006).
+    const settingsReady = C.readSettings(Nav.isAlive() ? chrome.storage.local : null).then((settings) => {
+        if (!settings.protection) {
+            // SET-003: plain DUET for this page. Only the logout is still reported.
+            disableHook();
+        } else if (!settings.back) {
+            post("back:disable", {});
+        }
+        return settings;
+    });
+
     function ensureAlive() {
         if (!Nav.isAlive()) {
             disableHook();
@@ -128,6 +139,9 @@
     }
 
     async function onLoaded() {
+        if (!(await settingsReady).protection) {
+            return;
+        }
         try {
             const state = await Nav.send({ type: "state:get" });
             ownTabId = typeof state.tabId === "number" ? state.tabId : null;
@@ -212,6 +226,11 @@
     async function onIntercepted(data) {
         const reqId = data.reqId;
         post("submit:ack", { reqId: reqId });
+        if (!(await settingsReady).protection) {
+            // A submit made before the settings were read goes to DUET as is (SET-003).
+            post("submit:execute", { reqId: reqId, rewrite: null });
+            return;
+        }
         try {
             ensureAlive();
             const gen = await waitForGen();
@@ -257,6 +276,9 @@
         }
         backBusy = true;
         try {
+            if (!(await settingsReady).back) {
+                return;
+            }
             ensureAlive();
             const plan = C.planBack(session.getJson(KEY_TAB));
             if (!plan) {

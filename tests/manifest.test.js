@@ -2,6 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const core = require("../extension/core.js");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -13,6 +14,7 @@ const referenced = [
     ...manifest.content_scripts.flatMap((cs) => [...(cs.js || []), ...(cs.css || [])]),
     ...manifest.declarative_net_request.rule_resources.map((r) => r.path),
     ...Object.values(manifest.icons || {}),
+    manifest.action.default_popup,
 ];
 const missing = [...new Set(referenced)].filter((file) => !fs.existsSync(path.join(extensionDir, file)));
 
@@ -52,3 +54,26 @@ test(
         }
     },
 );
+
+test("SET-001: the toolbar icon opens popup.html, which loads its files with core.js first", () => {
+    assert.equal(manifest.action.default_popup, "popup.html");
+    const html = fs.readFileSync(path.join(extensionDir, "popup.html"), "utf8");
+    const refs = [...html.matchAll(/(?:src|href)="([^"#:]+)"/g)].map((m) => m[1]);
+    for (const file of refs) {
+        assert.ok(fs.existsSync(path.join(extensionDir, file)), file);
+    }
+    const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]);
+    assert.deepEqual(scripts, ["core.js", "popup.js"]);
+});
+
+test("SET-001: the popup has one role=switch checkbox per setting, each inside its label", () => {
+    const html = fs.readFileSync(path.join(extensionDir, "popup.html"), "utf8");
+    for (const key of Object.keys(core.DEFAULT_SETTINGS)) {
+        assert.match(html, new RegExp(`<label class="setting-row" for="${key}">`), key);
+        assert.match(html, new RegExp(`<input[^>]*id="${key}"[^>]*role="switch"`), key);
+    }
+});
+
+test("SET-007: the ruleset the service worker toggles is the one in the manifest", () => {
+    assert.equal(manifest.declarative_net_request.rule_resources[0].id, core.GUARD_RULESET_ID);
+});

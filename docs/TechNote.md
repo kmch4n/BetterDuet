@@ -27,6 +27,7 @@ DUET のサーバーは、セッションごとに「現在の画面」を1つ�
 | `extension/content/landing.js` | 着地ページ | 付け替えられたタブで、開き直す画面を決めて開く |
 | `extension/content/links.js` | DUET の画面 | `openUrl` で外部の URL を開くリンクを、新しいタブで開く普通のリンクに書き換える（LINK-001/002）。DUET には何も送らない |
 | `extension/content/notice.js` | DUET の画面と着地ページ | お知らせ帯の描画 |
+| `extension/popup.html`、`popup.js`、`popup.css` | ポップアップ | 設定画面（SET-001〜003）。スイッチを `chrome.storage.local` に保存するだけで、DUET のタブには触れない。見た目は BetterE-class の設定画面にそろえている |
 | `extension/content/tokens.css`、`notice.css` | DUET の画面と着地ページ | DUET に合わせたデザイントークンと、帯・着地ページの見た目 |
 
 メッセージの形式（Service Worker との要求と返答、MAIN と ISOLATED の間のメッセージ）は [docs/plan/implementation-plan.md](plan/implementation-plan.md) の §6.3 と §7.1 に表でまとめています。コードを変えるときは、その表も合わせて直してください。
@@ -61,6 +62,14 @@ DUET のログアウトは、Shibboleth のログインまで終わらせるこ�
 
 early-hook が、DUET の `popstate` の監視を登録させません。「戻る」が押されると、自分の `popstate` の処理で `pushState` し直してから、page.js に知らせます。page.js はタブの履歴（`sessionStorage`）から1つ前のメニュー画面を決め、その画面を開く送信を Service Worker に頼みます。Alt+← は、DUET の keydown の処理に届く前に止め、Chrome 自身の「戻る」として働かせます。
 
+### 機能のオン・オフ（SET-001〜007）
+
+設定は `chrome.storage.local` の `betterduet:settings` に `{ protection, back, links }` で入ります。読み取りは `core.js` の `readSettings()` に一本化していて、値がない、壊れている、読めないときはすべてオンとして扱います。`protection` がオフなら `back` もオフとして扱います（`effectiveSettings()`）。
+
+- **遮断ルール**：Service Worker が、`onInstalled`、`onStartup`、`storage.onChanged` のたびに `declarativeNetRequest.updateEnabledRulesets` で `guard` のルールセットを `protection` に合わせます。ここだけは切り替えた直後から効きます
+- **画面ごとの判断**：page.js と links.js は、画面の読み込みのときに1回だけ設定を読み、その画面の間は変えません。`protection` がオフなら page.js は `hook:disable` を送り、Service Worker には何も知らせません（ログアウトの通知だけは送る）。`back` がオフなら `back:disable` を送ります
+- **DUET の「戻る」の処理を返す**：early-hook は、DUET が登録しようとした `popstate` の処理を捨てずに取っておきます。`hook:disable` か `back:disable` が来たら、それを本物の `addEventListener` で登録し直します。こうしないと、オフにした画面で「戻る」がブラウザの履歴の GET になり、セッションが壊れます
+
 ### ログアウト（CORE-006、TAB-005）
 
 DUET のログアウトは、フォーム送信ではなく jQuery の Ajax で `unloadform:closeWindow` を送り、応答のあとすぐタブを閉じます。early-hook はこの XHR を見つけると、Service Worker が「ログアウトした」と記録し終えるまで（最大 0.5 秒）送信を待たせます。待たせないと、通知が届く前にタブが閉じて、ほかのタブが勝手に入り直してしまいます（実機で確認した不具合）。
@@ -72,6 +81,7 @@ DUET のログアウトは、フォーム送信ではなく jQuery の Ajax で 
 | 最新の画面、世代番号、ログアウト中か、実行中のジョブ | `chrome.storage.session`（キー `betterduet:state`） | フォームの型にはトークンが入るため、ディスクやページから読める場所には置かない |
 | タブごとの画面と履歴 | DUET のオリジンの `sessionStorage`（キー `betterduet:tab`） | 画面 ID、タブ ID、履歴だけ |
 | 一時的な目印 | 同じく `sessionStorage` | `betterduet:pendingBack`、`betterduet:notice`、`betterduet:revived`、`betterduet:ssoTried` |
+| 機能のスイッチ | `chrome.storage.local`（キー `betterduet:settings`） | `protection`、`back`、`links` の真偽値だけ。拡張機能を外すまで残る |
 
 Service Worker のキューそのものはメモリにあり、途中で Service Worker が止まると消えます。そのため、実行中のジョブには期限を付けて `storage.session` に残し、起動時に期限切れなら捨てます。待っている側のコンテンツスクリプトは、10秒ごとに port で ping して Service Worker を起こしておきます。
 
@@ -90,4 +100,5 @@ DUET の見た目が変わったら、[仕様書の NOTICE-002 の表](spec/arch
 - **`openerTabId` は複製元を指さない**（E-023）：複製元の判定は `sessionStorage` の引き継ぎで行います（E-024）
 - **`declarativeNetRequest` の例外ルールは `urlFilter` で書いている**：初めは正規表現（`\?` を含む `regexFilter`）の版で拡張機能が有効にならなかった。2026-10-19 に同じ正規表現（`^https://duet\.doshisha\.ac\.jp/gakusei/html/fb/fb010/FB01090G\.html\?betterduet=sso$`）に書き換えて読み込み直すと、エラーなく有効になった。当時の原因は、同じ時期に `chrome://extensions` でフォルダ選択のダイアログが開いたままになっていたことだと考えられる。正規表現の版で例外が実際に効くかまでは試していないので、実機で確かめた `urlFilter` の版のままにしている
 - **ISOLATED world から `onclick` 属性を外しても、ページの処理は残る**：DUET が `onclick` 属性で付けた処理は、拡張機能の側で `removeAttribute("onclick")` しても、ページの側の `a.onclick` に残って動いた。links.js は、書き換えたリンクのクリックを `window` の捕捉フェーズで `stopPropagation()` して、DUET の処理まで届かないようにしている
+- **DUET の「戻る」の警告は `alert`**：「戻る」をオフにした画面で確かめると、自動操作の道具が止まります。画面は OS の側で撮り、本物の Enter で閉じます（E-037）
 - **DUET の確認ダイアログ（`confirm`）**：ログアウトなどで出ます。自動操作の道具を止めてしまうので、確認するときは本物のキー入力で OK を押します

@@ -36,6 +36,7 @@
 | 遮断ルール | `declarativeNetRequest` の静的ルール | `/gakusei/html/` への画面としての GET を着地ページに付け替える |
 | 着地ページの係 | コンテンツスクリプト（着地ページ） | 付け替えられたタブを、DUET の画面に開き直す |
 | お知らせ帯 | コンテンツスクリプト | 画面の上部に、拡張機能からのお知らせを表示する |
+| 設定画面 | ポップアップ（ツールバーのアイコン） | 機能ごとのスイッチを表示し、`chrome.storage.local` に保存する。DUET には何も送らない（[features/settings.md](features/settings.md)） |
 
 ## 共通の要件
 
@@ -145,6 +146,7 @@ E-018 の範囲では、ログアウト以外に Ajax で DUET に送る操作�
 - 最新の画面とフォームの型は `chrome.storage.session` に置く。フォームの型にはセッションのトークンが含まれるため、ディスクに書き出す場所（`chrome.storage.local` など）やページから読める場所（`sessionStorage` など）には置かない
 - タブごとの画面と履歴は、CORE-002 のとおり DUET のオリジンの `sessionStorage` に置く
 - 画面の内容（氏名、成績、科目名など）は記録しない
+- 設定画面のスイッチ（SET-002）は `chrome.storage.local` に置く。スイッチの真偽値だけで、DUET の画面の内容もトークンも含まない
 - DUET 以外へは何も送らない
 
 受け入れ条件:

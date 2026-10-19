@@ -92,6 +92,11 @@ const BetterDuetCore = (() => {
 
     const HISTORY_CAP = 50;
 
+    // Feature switches (SET-002). Every switch is on unless the user turned it off.
+    const SETTINGS_KEY = "betterduet:settings";
+    const DEFAULT_SETTINGS = Object.freeze({ protection: true, back: true, links: true });
+    const GUARD_RULESET_ID = "guard";
+
     /** @param {string} action @returns {string|null} */
     function screenIdFromAction(action) {
         if (typeof action !== "string") {
@@ -329,6 +334,42 @@ const BetterDuetCore = (() => {
         return value;
     }
 
+    /**
+     * Stored settings with every missing or non-boolean switch replaced by its default (SET-002).
+     * @param {unknown} raw @returns {{ protection: boolean, back: boolean, links: boolean }}
+     */
+    function normalizeSettings(raw) {
+        const source = raw !== null && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+        const settings = {};
+        for (const key of Object.keys(DEFAULT_SETTINGS)) {
+            settings[key] = typeof source[key] === "boolean" ? source[key] : DEFAULT_SETTINGS[key];
+        }
+        return settings;
+    }
+
+    /**
+     * The switches that actually apply: Back needs the protection switch (SET-003).
+     * @param {unknown} raw @returns {{ protection: boolean, back: boolean, links: boolean }}
+     */
+    function effectiveSettings(raw) {
+        const settings = normalizeSettings(raw);
+        settings.back = settings.protection && settings.back;
+        return settings;
+    }
+
+    /**
+     * Reads the effective settings from a chrome.storage area; defaults when it fails (SET-002).
+     * @param {{ get: Function }|null|undefined} area
+     */
+    async function readSettings(area) {
+        try {
+            const result = await area.get(SETTINGS_KEY);
+            return effectiveSettings(result ? result[SETTINGS_KEY] : null);
+        } catch (e) {
+            return effectiveSettings(null);
+        }
+    }
+
     /** @param {string} html @returns {"entry"|"duetError"|"unknown"} */
     function classifyEntryHtml(html) {
         const text = String(html == null ? "" : html);
@@ -361,6 +402,9 @@ const BetterDuetCore = (() => {
         ACK_TIMEOUT_MS,
         GEN_WAIT_MS,
         KEEPALIVE_MS,
+        SETTINGS_KEY,
+        DEFAULT_SETTINGS,
+        GUARD_RULESET_ID,
         screenIdFromAction,
         isMenuScreen,
         menuEntry,
@@ -381,6 +425,9 @@ const BetterDuetCore = (() => {
         classifyEntryHtml,
         openUrlSource,
         externalLinkHref,
+        normalizeSettings,
+        effectiveSettings,
+        readSettings,
     };
 })();
 
