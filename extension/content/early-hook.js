@@ -1,6 +1,7 @@
 // MAIN world, document_start. Runs before DUET's own scripts (plan 7.1).
-// Cannot use core.js: DUET_FORM_IDS, LOGOUT_PATTERN and ACK_TIMEOUT_MS are inlined and must stay
-// identical to extension/core.js (tests/early-hook.test.js checks each of them).
+// Cannot use core.js: DUET_FORM_IDS, LOGOUT_PATTERN, ACK_TIMEOUT_MS and DOWNLOAD_SETTLE_MS are inlined
+// and must stay identical to extension/core.js (tests/early-hook.test.js checks each of them).
+// isDownloadLink() mirrors BetterDuetCore.isDownloadAction().
 (() => {
     "use strict";
 
@@ -10,8 +11,10 @@
     // After page.js acknowledges a request it may legitimately wait for the service worker queue.
     // If it still has not answered, the request is restored (never sent natively: the page may be stale).
     const SETTLE_TIMEOUT_MS = 60000;
-    // How long an issued submit suppresses popstate (a download never navigates away).
+    // How long an issued submit suppresses popstate. A navigation replaces this document well before
+    // that; a download never navigates away, so it uses the service worker's settle time (BACK-002).
     const ISSUED_WINDOW_MS = 30000;
+    const DOWNLOAD_SETTLE_MS = 3000;
     const CLOSE_WINDOW_LINK = "unloadform:closeWindow";
     // DUET closes the tab as soon as the logout XHR answers, so the XHR waits for the SW to record it.
     const LOGOUT_WAIT_MS = 500;
@@ -23,6 +26,7 @@
     const pending = new Map();
     const logoutWaiters = new Map();
     let submitIssued = false;
+    let issueSeq = 0;
 
     const nativeAdd = window.addEventListener;
     const nativeSubmit = HTMLFormElement.prototype.submit;
@@ -110,11 +114,23 @@
         true
     );
 
+    function isDownloadLink(linkValue) {
+        const colon = linkValue ? linkValue.indexOf(":") : -1;
+        return colon >= 0 && /download/i.test(linkValue.slice(colon + 1));
+    }
+
     function perform(entry, rewrite) {
         submitIssued = true;
-        setTimeout(() => {
-            submitIssued = false;
-        }, ISSUED_WINDOW_MS);
+        // Only the latest submit may lift the suppression.
+        const seq = ++issueSeq;
+        setTimeout(
+            () => {
+                if (seq === issueSeq) {
+                    submitIssued = false;
+                }
+            },
+            isDownloadLink(entry.linkValue) ? DOWNLOAD_SETTLE_MS : ISSUED_WINDOW_MS
+        );
         const form = entry.form;
         const linkEl = form.elements ? form.elements[entry.formId + ":__link_clicked__"] : null;
         if (linkEl && entry.linkValue !== null) {

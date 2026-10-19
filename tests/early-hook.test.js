@@ -354,6 +354,54 @@ test("BACK-002: popstate is re-pushed but ignored while a submit is pending or i
     assert.equal(env.sent("back:requested").length, 0);
 });
 
+/** Submits `form` through the hook and lets page.js answer "send". */
+function submitAndExecute(env, form) {
+    const before = env.sent("submit:intercepted").length;
+    form.submit();
+    const request = env.sent("submit:intercepted")[before];
+    env.deliver("submit:execute", { reqId: request.reqId, rewrite: null });
+}
+
+const popstate = (env) => env.sandbox.__listeners.popstate[0]({});
+
+test("BACK-002: after a download, Back works again once the 3 s settle time has passed", () => {
+    const env = makeEnv();
+    submitAndExecute(env, makeForm(env, "form1", "doDownload").form);
+    popstate(env);
+    assert.equal(env.sent("back:requested").length, 0);
+
+    env.flush(Core.DOWNLOAD_SETTLE_MS);
+    popstate(env);
+    assert.equal(env.sent("back:requested").length, 1);
+});
+
+test("BACK-002: after a navigating submit, Back stays suppressed for the full 30 s", () => {
+    const env = makeEnv();
+    submitAndExecute(env, makeForm(env, "menuform", "goFb01701g").form);
+    env.flush(Core.DOWNLOAD_SETTLE_MS);
+    popstate(env);
+    assert.equal(env.sent("back:requested").length, 0);
+
+    env.flush(30000);
+    popstate(env);
+    assert.equal(env.sent("back:requested").length, 1);
+});
+
+test("BACK-002: an earlier download's timer does not lift a later submit's suppression", () => {
+    const env = makeEnv();
+    submitAndExecute(env, makeForm(env, "form1", "doDownload").form);
+    submitAndExecute(env, makeForm(env, "menuform", "goFb01701g").form);
+    env.flush(Core.DOWNLOAD_SETTLE_MS);
+    popstate(env);
+    assert.equal(env.sent("back:requested").length, 0);
+});
+
+test("CORE-005: the inlined DOWNLOAD_SETTLE_MS equals BetterDuetCore.DOWNLOAD_SETTLE_MS", () => {
+    const match = /const DOWNLOAD_SETTLE_MS = (\d+);/.exec(HOOK_SOURCE);
+    assert.ok(match, "DOWNLOAD_SETTLE_MS literal not found in early-hook.js");
+    assert.equal(Number(match[1]), Core.DOWNLOAD_SETTLE_MS);
+});
+
 test("CORE-004: nav:prepare clears DUET's forceClose flag", () => {
     const env = makeEnv();
     env.sandbox.forceClose = true;
