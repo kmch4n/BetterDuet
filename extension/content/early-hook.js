@@ -111,7 +111,7 @@
             event.stopImmediatePropagation();
             intercept(form, true, event.submitter);
         },
-        true
+        true,
     );
 
     function isDownloadLink(linkValue) {
@@ -129,7 +129,7 @@
                     submitIssued = false;
                 }
             },
-            isDownloadLink(entry.linkValue) ? DOWNLOAD_SETTLE_MS : ISSUED_WINDOW_MS
+            isDownloadLink(entry.linkValue) ? DOWNLOAD_SETTLE_MS : ISSUED_WINDOW_MS,
         );
         const form = entry.form;
         const linkEl = form.elements ? form.elements[entry.formId + ":__link_clicked__"] : null;
@@ -296,11 +296,18 @@
         window,
         "keydown",
         (event) => {
-            if (enabled && event.altKey && event.key === "ArrowLeft" && !event.ctrlKey && !event.shiftKey && !event.metaKey) {
+            if (
+                enabled &&
+                event.altKey &&
+                event.key === "ArrowLeft" &&
+                !event.ctrlKey &&
+                !event.shiftKey &&
+                !event.metaKey
+            ) {
                 event.stopPropagation();
             }
         },
-        true
+        true,
     );
 
     // ---- Logout (CORE-006) ----

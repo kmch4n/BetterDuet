@@ -39,10 +39,7 @@ test("CORE-001 MENU_SCREENS has 17 entries with derived actions", () => {
 test("CORE-001 screenIdFromAction handles paths, URLs, and suffixes", () => {
     assert.equal(core.screenIdFromAction("/gakusei/html/fb/fb020/FB02001G.html"), "FB02001G");
     assert.equal(core.screenIdFromAction("FB17001G.html?x=1"), "FB17001G");
-    assert.equal(
-        core.screenIdFromAction("https://duet.doshisha.ac.jp/a/FB17001G.html;jsessionid=abc"),
-        "FB17001G"
-    );
+    assert.equal(core.screenIdFromAction("https://duet.doshisha.ac.jp/a/FB17001G.html;jsessionid=abc"), "FB17001G");
     assert.equal(core.screenIdFromAction("a/FB17001G.html#top"), "FB17001G");
     assert.equal(core.screenIdFromAction("/a/index.html"), null);
     assert.equal(core.screenIdFromAction(""), null);
@@ -171,10 +168,7 @@ test("TAB-002 decideSubmit returns send for the latest generation", () => {
 });
 
 test("TAB-003 decideSubmit rewrites stale common forms", () => {
-    assert.equal(
-        core.decideSubmit({ pageGen: 2, latestGen: 3, loggedOut: false, formId: "menuform" }),
-        "rewrite"
-    );
+    assert.equal(core.decideSubmit({ pageGen: 2, latestGen: 3, loggedOut: false, formId: "menuform" }), "rewrite");
 });
 
 test("TAB-002 decideSubmit blocks stale screen-specific forms", () => {
@@ -182,10 +176,7 @@ test("TAB-002 decideSubmit blocks stale screen-specific forms", () => {
 });
 
 test("TAB-005 decideSubmit reports loggedOut before anything else", () => {
-    assert.equal(
-        core.decideSubmit({ pageGen: 3, latestGen: 3, loggedOut: true, formId: "menuform" }),
-        "loggedOut"
-    );
+    assert.equal(core.decideSubmit({ pageGen: 3, latestGen: 3, loggedOut: true, formId: "menuform" }), "loggedOut");
 });
 
 test("BACK-002 applyLoad creates a record from null", () => {
@@ -223,7 +214,7 @@ test("BACK-002 applyLoad truncates forward history on a new navigation", () => {
     r = load(r, "FB17001G");
     assert.deepEqual(
         r.history.map((e) => e.s),
-        ["FB02001G", "FB20001G", "FB17001G"]
+        ["FB02001G", "FB20001G", "FB17001G"],
     );
     assert.equal(r.index, 2);
 });
@@ -295,16 +286,15 @@ test("BACK-001 planBack returns null for a missing record", () => {
 });
 
 test("GUARD-002 landingTarget returns entry for the entry path", () => {
-    assert.deepEqual(
-        core.landingTarget({ from: core.ENTRY_FROM, record: null, ownTabId: 1, loggedOut: true }),
-        { kind: "entry" }
-    );
+    assert.deepEqual(core.landingTarget({ from: core.ENTRY_FROM, record: null, ownTabId: 1, loggedOut: true }), {
+        kind: "entry",
+    });
 });
 
 test("TAB-005 landingTarget returns loggedOut", () => {
     assert.deepEqual(
         core.landingTarget({ from: "fb/fb020/FB02001G.html", record: null, ownTabId: 1, loggedOut: true }),
-        { kind: "loggedOut" }
+        { kind: "loggedOut" },
     );
 });
 
@@ -344,7 +334,7 @@ test("CORE-006 isLogoutBody matches raw and encoded bodies", () => {
 });
 
 test("GUARD-003 classifyEntryHtml distinguishes entry, error, and unknown", () => {
-    const entry = "<form id=\"form1\"><a id=\"goHome\" onclick=\"submit('form1:goHome')\">x</a></form>";
+    const entry = '<form id="form1"><a id="goHome" onclick="submit(\'form1:goHome\')">x</a></form>';
     assert.equal(core.classifyEntryHtml(entry), "entry");
     assert.equal(core.classifyEntryHtml("<p>ページ間の移動でエラーが発生しました</p>"), "duetError");
     assert.equal(core.classifyEntryHtml("<p>認証エラー</p>"), "duetError");

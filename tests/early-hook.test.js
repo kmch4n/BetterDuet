@@ -186,7 +186,10 @@ test("TAB-001: submit:execute with rewrite sets the action and renames only the 
 
     env.deliver("submit:execute", {
         reqId: request.reqId,
-        rewrite: { action: "/gakusei/html/fb/fb017/FB01701G.html", viewKeyedName: "menuform/html/fb/fb017/FB01701G.html" },
+        rewrite: {
+            action: "/gakusei/html/fb/fb017/FB01701G.html",
+            viewKeyedName: "menuform/html/fb/fb017/FB01701G.html",
+        },
     });
 
     assert.equal(env.nativeSubmits.length, 1);
@@ -241,7 +244,10 @@ test("CORE-004: submit:ack keeps the request waiting past the ack timeout", () =
 test("TAB-002: submit:restore re-enables links, the once-flag and cursors without submitting", () => {
     const env = makeEnv();
     const calls = [];
-    const had = { setAttribute: (n, v) => calls.push(["set", n, v]), removeAttribute: (n) => calls.push(["remove", n]) };
+    const had = {
+        setAttribute: (n, v) => calls.push(["set", n, v]),
+        removeAttribute: (n) => calls.push(["remove", n]),
+    };
     const pair = (value) => Object.assign({ getAttribute: () => value }, had);
     env.sandbox.document.anchors.push(pair("doAction()"), pair(null));
     let cursor = null;
@@ -255,7 +261,10 @@ test("TAB-002: submit:restore re-enables links, the once-flag and cursors withou
 
     assert.equal(env.nativeSubmits.length, 0);
     assert.equal(env.sandbox.mMOnceTimeFlg, true);
-    assert.deepEqual(calls, [["set", "onclick", "doAction()"], ["remove", "onclick"]]);
+    assert.deepEqual(calls, [
+        ["set", "onclick", "doAction()"],
+        ["remove", "onclick"],
+    ]);
     assert.deepEqual(cursor, ["cursor", ""]);
 });
 

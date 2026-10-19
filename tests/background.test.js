@@ -119,7 +119,10 @@ async function makeEnv(stored) {
     };
     env.state = () => env.store[STATE_KEY];
     env.load = async (tabId, screenPath) => {
-        const reply = await env.send({ type: "page:loaded", screenId: Core.screenIdFromAction(screenPath), forms: formsAt(screenPath) }, tabId);
+        const reply = await env.send(
+            { type: "page:loaded", screenId: Core.screenIdFromAction(screenPath), forms: formsAt(screenPath) },
+            tabId,
+        );
         assert.equal(reply.type, "loaded");
         return reply.gen;
     };
@@ -141,7 +144,10 @@ test("CORE-001: page:loaded records the latest screen and counts generations", a
 test("CORE-004: a submit from the latest screen is sent as is", async () => {
     const env = await makeEnv();
     const gen = await env.load(1, HOME_PATH);
-    const reply = await env.send({ type: "submit:request", pageGen: gen, formId: "form1", actionName: "doSomething" }, 1);
+    const reply = await env.send(
+        { type: "submit:request", pageGen: gen, formId: "form1", actionName: "doSomething" },
+        1,
+    );
     assert.equal(reply.type, "send");
     assert.equal(typeof reply.jobId, "string");
 });
@@ -150,7 +156,10 @@ test("TAB-001: a common-form submit from a stale screen is rewritten to the late
     const env = await makeEnv();
     const oldGen = await env.load(1, HOME_PATH);
     await env.load(2, NOTICES_PATH);
-    const reply = await env.send({ type: "submit:request", pageGen: oldGen, formId: "menuform", actionName: "goFb01601g" }, 1);
+    const reply = await env.send(
+        { type: "submit:request", pageGen: oldGen, formId: "menuform", actionName: "goFb01601g" },
+        1,
+    );
     assert.equal(reply.type, "rewrite");
     assert.equal(reply.action, "/gakusei/html/" + NOTICES_PATH);
     assert.equal(reply.viewKeyedName, "menuform/html/" + NOTICES_PATH);
@@ -160,7 +169,10 @@ test("TAB-002: a form1 submit from a stale screen is blocked with NOTICE-TAB-1",
     const env = await makeEnv();
     const oldGen = await env.load(1, HOME_PATH);
     await env.load(2, NOTICES_PATH);
-    const reply = await env.send({ type: "submit:request", pageGen: oldGen, formId: "form1", actionName: "doSomething" }, 1);
+    const reply = await env.send(
+        { type: "submit:request", pageGen: oldGen, formId: "form1", actionName: "doSomething" },
+        1,
+    );
     assert.deepEqual({ ...reply }, { type: "notice", id: "TAB-1" });
     assert.equal(env.state().job, null);
 });
@@ -168,7 +180,10 @@ test("TAB-002: a form1 submit from a stale screen is blocked with NOTICE-TAB-1",
 test("CORE-003: a second tab's request waits until the running navigation finishes", async () => {
     const env = await makeEnv();
     const genA = await env.load(1, HOME_PATH);
-    const first = await env.send({ type: "submit:request", pageGen: genA, formId: "menuform", actionName: "goFb01701g" }, 1);
+    const first = await env.send(
+        { type: "submit:request", pageGen: genA, formId: "menuform", actionName: "goFb01701g" },
+        1,
+    );
     assert.equal(first.type, "send");
 
     // Tab 2 still shows the screen of generation genA as well (a duplicated tab, for example).
@@ -198,7 +213,10 @@ test("CORE-003: a navigation that never lands is released after the timeout and 
 test("CORE-005: a download job ends after the settle time and keeps the latest screen", async () => {
     const env = await makeEnv();
     const gen = await env.load(1, "fb/fb170/FB17001G.html");
-    const download = await env.send({ type: "submit:request", pageGen: gen, formId: "form1", actionName: "doDownload" }, 1);
+    const download = await env.send(
+        { type: "submit:request", pageGen: gen, formId: "form1", actionName: "doDownload" },
+        1,
+    );
     assert.equal(download.type, "send");
     assert.equal(env.state().job.kind, "download");
 
@@ -218,7 +236,10 @@ test("TAB-005: after a logout XHR, submits and opens get NOTICE-TAB-2", async ()
     assert.equal(env.state().loggedOut, true);
     assert.equal(env.state().latest, null);
 
-    const submit = await env.send({ type: "submit:request", pageGen: gen, formId: "menuform", actionName: "goFb01701g" }, 2);
+    const submit = await env.send(
+        { type: "submit:request", pageGen: gen, formId: "menuform", actionName: "goFb01701g" },
+        2,
+    );
     assert.deepEqual({ ...submit }, { type: "notice", id: "TAB-2" });
     const open = await env.send({ type: "open:request", screenId: "FB02001G", reason: "landing" }, 2);
     assert.deepEqual({ ...open }, { type: "notice", id: "TAB-2" });
@@ -239,7 +260,11 @@ test("GUARD-002: an open request with a latest screen gets a plan from the lates
     const reply = await env.send({ type: "open:request", screenId: "FB01601G", reason: "landing" }, 2);
     assert.equal(reply.type, "plan");
     assert.equal(reply.plan.action, "/gakusei/html/" + NOTICES_PATH);
-    assert.ok(reply.plan.fields.some(([name, value]) => name === "menuform:__link_clicked__" && value === "menuform:goFb01601g"));
+    assert.ok(
+        reply.plan.fields.some(
+            ([name, value]) => name === "menuform:__link_clicked__" && value === "menuform:goFb01601g",
+        ),
+    );
 });
 
 test("GUARD-003: a successful revive turns into a navigation with a plan for the target", async () => {
@@ -248,7 +273,10 @@ test("GUARD-003: a successful revive turns into a navigation with a plan for the
     assert.equal(revive.type, "revive");
     assert.equal(env.state().job.kind, "revive");
 
-    const reply = await env.send({ type: "revive:done", jobId: revive.jobId, result: "ok", forms: formsAt(HOME_PATH) }, 1);
+    const reply = await env.send(
+        { type: "revive:done", jobId: revive.jobId, result: "ok", forms: formsAt(HOME_PATH) },
+        1,
+    );
     assert.equal(reply.type, "plan");
     assert.equal(reply.jobId, revive.jobId);
     assert.ok(reply.plan.fields.some(([, value]) => value === "menuform:goFb01601g"));
@@ -262,7 +290,10 @@ test("GUARD-003: a revive that times out clears the latest screen and later repo
     await env.advance(Core.REVIVE_TIMEOUT_MS);
     assert.equal(env.state().job, null);
     assert.equal(env.state().latest, null);
-    const late = await env.send({ type: "revive:done", jobId: revive.jobId, result: "ok", forms: formsAt(HOME_PATH) }, 1);
+    const late = await env.send(
+        { type: "revive:done", jobId: revive.jobId, result: "ok", forms: formsAt(HOME_PATH) },
+        1,
+    );
     assert.equal(late.type, "stale");
 });
 
@@ -279,7 +310,10 @@ test("GUARD-004: a revive that finds the SSO login gone answers NOTICE-GUARD-4",
 
 test("GUARD-003: an error page right after a revival does not revive again", async () => {
     const env = await makeEnv();
-    const reply = await env.send({ type: "page:error", errorKind: "transition", targetScreenId: "FB02001G", revived: true }, 1);
+    const reply = await env.send(
+        { type: "page:error", errorKind: "transition", targetScreenId: "FB02001G", revived: true },
+        1,
+    );
     assert.deepEqual({ ...reply }, { type: "notice", id: "GUARD-3" });
     await settle();
     // No revive job was started (nothing has been written at all).
@@ -329,7 +363,11 @@ test("CORE-003: requests queued by a tab's old document are dropped when a new d
     const env = await makeEnv();
     const gen = await env.load(1, HOME_PATH);
     await env.send({ type: "submit:request", pageGen: gen, formId: "menuform", actionName: "goFb01701g" }, 1, "doc-a");
-    const queued = env.send({ type: "submit:request", pageGen: gen, formId: "menuform", actionName: "goFb01601g" }, 2, "doc-old");
+    const queued = env.send(
+        { type: "submit:request", pageGen: gen, formId: "menuform", actionName: "goFb01601g" },
+        2,
+        "doc-old",
+    );
     await settle();
     // Tab 2 reloads; its new document starts up before the queue reaches the old request.
     await env.send({ type: "state:get" }, 2, "doc-new");

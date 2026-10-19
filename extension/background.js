@@ -115,9 +115,12 @@ function armTimer() {
     if (!job) {
         return;
     }
-    activeTimer = setTimeout(() => {
-        void onDeadline(job.jobId);
-    }, Math.max(0, job.deadline - Date.now()));
+    activeTimer = setTimeout(
+        () => {
+            void onDeadline(job.jobId);
+        },
+        Math.max(0, job.deadline - Date.now()),
+    );
 }
 
 async function startJob(kind, tabId, meta) {
@@ -467,7 +470,14 @@ async function reconcileDocument(tabId, docId, type) {
     }
     dropQueuedFor(tabId, docId);
     const isRequest = type === "open:request" || type === "submit:request";
-    if (isRequest && active && active.kind === "nav" && active.tabId === tabId && active.docId && active.docId !== docId) {
+    if (
+        isRequest &&
+        active &&
+        active.kind === "nav" &&
+        active.tabId === tabId &&
+        active.docId &&
+        active.docId !== docId
+    ) {
         await endActive(false);
     }
 }

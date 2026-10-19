@@ -14,9 +14,7 @@ const referenced = [
     ...manifest.declarative_net_request.rule_resources.map((r) => r.path),
     ...Object.values(manifest.icons || {}),
 ];
-const missing = [...new Set(referenced)].filter(
-    (file) => !fs.existsSync(path.join(extensionDir, file))
-);
+const missing = [...new Set(referenced)].filter((file) => !fs.existsSync(path.join(extensionDir, file)));
 
 test("CORE-008: manifest_version is 3", () => {
     assert.equal(manifest.manifest_version, 3);
@@ -52,5 +50,5 @@ test(
         for (const file of referenced) {
             assert.ok(fs.existsSync(path.join(extensionDir, file)), file);
         }
-    }
+    },
 );

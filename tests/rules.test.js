@@ -5,9 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const rules = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "..", "extension", "rules.json"), "utf8")
-);
+const rules = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "extension", "rules.json"), "utf8"));
 const rule = rules[0];
 const regex = new RegExp(rule.condition.regexFilter);
 
@@ -46,7 +44,7 @@ test("GUARD-001: regexFilter does not match other DUET paths or other hosts", ()
 test("GUARD-001: substitution redirects to the landing page with the from parameter", () => {
     assert.equal(
         substitute("https://duet.doshisha.ac.jp/gakusei/html/fb/fb010/FB01002G.html"),
-        "https://duet.doshisha.ac.jp/betterduet-landing?from=fb/fb010/FB01002G.html"
+        "https://duet.doshisha.ac.jp/betterduet-landing?from=fb/fb010/FB01002G.html",
     );
 });
 

@@ -53,8 +53,7 @@ const BetterDuetCore = (() => {
 
     const LOGOUT_PATTERN = /unloadform(?::|%3A)__link_clicked__=unloadform(?::|%3A)closeWindow/i;
 
-    const notice = (kind, text, button) =>
-        Object.freeze({ kind, text, button: button ? Object.freeze(button) : null });
+    const notice = (kind, text, button) => Object.freeze({ kind, text, button: button ? Object.freeze(button) : null });
     const REOPEN = { label: "この画面を開き直す", action: "reopen" };
     const PORTAL = { label: "SSO ポータルを開く", action: "openPortal" };
 
@@ -62,24 +61,24 @@ const BetterDuetCore = (() => {
         "TAB-1": notice(
             "warning",
             "別のタブで DUET を操作したため、このタブの画面は古くなっています。この操作を続けるには、画面を開き直してください。",
-            REOPEN
+            REOPEN,
         ),
         "TAB-2": notice(
             "warning",
             "DUET からログアウトしています。続けるには、SSO ポータルから DUET を開き直してください。",
-            PORTAL
+            PORTAL,
         ),
         "GUARD-1": notice("info", "再読み込みのため、一覧の画面を開き直しました。詳細の画面は開き直せません。", null),
         "GUARD-2": notice("info", "DUET のセッションが切れていたため、自動で入り直しました。", null),
         "GUARD-3": notice(
             "warning",
             "DUET を開き直せませんでした。SSO ポータルから DUET を開き直してください。",
-            PORTAL
+            PORTAL,
         ),
         "GUARD-4": notice(
             "warning",
             "SSO のログインが切れています。SSO ポータルからログインし直してください。",
-            PORTAL
+            PORTAL,
         ),
         "BACK-1": notice("info", "これより前の画面はありません。", null),
     });
