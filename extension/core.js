@@ -285,6 +285,50 @@ const BetterDuetCore = (() => {
         return typeof body === "string" && LOGOUT_PATTERN.test(body);
     }
 
+    // `return openUrl(<arg>)` and nothing else; <arg> is one of the shapes DUET uses (LINK-001, E-036).
+    const OPEN_URL_PATTERN =
+        /^\s*return\s+openUrl\(\s*(?:\$\(\s*'#([\w-]+)'\s*\)\.val\(\)|\$\(\s*'\.([\w-]+)'\s*\)\.html\(\)|'([^']*)'|"([^"]*)")\s*\)\s*;?\s*$/;
+
+    /**
+     * Tells where an `openUrl` link keeps its URL.
+     * @param {string|null} onclick @returns {{ kind: "id"|"class"|"literal", key: string }|null}
+     */
+    function openUrlSource(onclick) {
+        const match = OPEN_URL_PATTERN.exec(String(onclick == null ? "" : onclick));
+        if (!match) {
+            return null;
+        }
+        if (match[1]) {
+            return { kind: "id", key: match[1] };
+        }
+        if (match[2]) {
+            return { kind: "class", key: match[2] };
+        }
+        return { kind: "literal", key: match[3] !== undefined ? match[3] : match[4] };
+    }
+
+    /**
+     * The href for a rewritten link, or null when DUET's own popup should stay (LINK-002).
+     * Mirrors DUET's openUrl check (http:// or https:// only) and skips DUET's own host.
+     * @param {string|null} raw @returns {string|null}
+     */
+    function externalLinkHref(raw) {
+        const value = String(raw == null ? "" : raw).trim();
+        if (!/^https?:\/\//.test(value)) {
+            return null;
+        }
+        let url;
+        try {
+            url = new URL(value);
+        } catch (e) {
+            return null;
+        }
+        if (url.hostname.toLowerCase() === "duet.doshisha.ac.jp") {
+            return null;
+        }
+        return value;
+    }
+
     /** @param {string} html @returns {"entry"|"duetError"|"unknown"} */
     function classifyEntryHtml(html) {
         const text = String(html == null ? "" : html);
@@ -335,6 +379,8 @@ const BetterDuetCore = (() => {
         landingTarget,
         isLogoutBody,
         classifyEntryHtml,
+        openUrlSource,
+        externalLinkHref,
     };
 })();
 

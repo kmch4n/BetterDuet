@@ -32,6 +32,7 @@ GitHub Actions（`.github/workflows/test.yml`）も、`main` への push と Pul
 | `tests/core.test.js` | `core.js` の純粋な関数（送信の判定、履歴、着地先、ログアウトの判定など） |
 | `tests/early-hook.test.js` | `early-hook.js` を `node:vm` で動かし、送信の横取り、書き換え、タイムアウト、ログアウトの待ち合わせ、`popstate` を確かめる |
 | `tests/background.test.js` | `background.js` を `node:vm` で動かし、偽の `chrome` と時計を使って、送信の判断、順番待ち、ダウンロードの3秒、ログアウト、入り直し、起動時のジョブの扱いを確かめる |
+| `tests/links.test.js` | `content/links.js` を `node:vm` で動かし、`openUrl` のリンクの書き換えと、クリックを DUET の処理まで届かせないことを確かめる |
 | `tests/rules.test.js` | `rules.json` の遮断と例外の範囲 |
 | `tests/manifest.test.js` | 権限、ホスト権限、参照しているファイルの存在 |
 

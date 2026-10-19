@@ -25,6 +25,7 @@ DUET のサーバーは、セッションごとに「現在の画面」を1つ�
 | `extension/content/page.js` | DUET の画面（ISOLATED） | 画面の読み込みを Service Worker に知らせる。横取りした送信を Service Worker に回して結果を early-hook に返す。タブの記録、「戻る」、お知らせ帯の表示 |
 | `extension/content/nav.js` | DUET の画面と着地ページ | Service Worker とのやり取り（keepalive 付き）、計画どおりのフォーム送信、入り直しの手順 |
 | `extension/content/landing.js` | 着地ページ | 付け替えられたタブで、開き直す画面を決めて開く |
+| `extension/content/links.js` | DUET の画面 | `openUrl` で外部の URL を開くリンクを、新しいタブで開く普通のリンクに書き換える（LINK-001/002）。DUET には何も送らない |
 | `extension/content/notice.js` | DUET の画面と着地ページ | お知らせ帯の描画 |
 | `extension/content/tokens.css`、`notice.css` | DUET の画面と着地ページ | DUET に合わせたデザイントークンと、帯・着地ページの見た目 |
 
@@ -88,4 +89,5 @@ DUET の見た目が変わったら、[仕様書の NOTICE-002 の表](spec/arch
 - **拡張機能を更新すると、開いているタブのフックだけが残る**：page.js は動かなくなります。early-hook は1.5秒以内に返事がなければフックを外して DUET 本来の送信に任せます（P-5）
 - **`openerTabId` は複製元を指さない**（E-023）：複製元の判定は `sessionStorage` の引き継ぎで行います（E-024）
 - **`declarativeNetRequest` の例外ルールは `urlFilter` で書いている**：初めは正規表現（`\?` を含む `regexFilter`）の版で拡張機能が有効にならなかった。2026-10-19 に同じ正規表現（`^https://duet\.doshisha\.ac\.jp/gakusei/html/fb/fb010/FB01090G\.html\?betterduet=sso$`）に書き換えて読み込み直すと、エラーなく有効になった。当時の原因は、同じ時期に `chrome://extensions` でフォルダ選択のダイアログが開いたままになっていたことだと考えられる。正規表現の版で例外が実際に効くかまでは試していないので、実機で確かめた `urlFilter` の版のままにしている
+- **ISOLATED world から `onclick` 属性を外しても、ページの処理は残る**：DUET が `onclick` 属性で付けた処理は、拡張機能の側で `removeAttribute("onclick")` しても、ページの側の `a.onclick` に残って動いた。links.js は、書き換えたリンクのクリックを `window` の捕捉フェーズで `stopPropagation()` して、DUET の処理まで届かないようにしている
 - **DUET の確認ダイアログ（`confirm`）**：ログアウトなどで出ます。自動操作の道具を止めてしまうので、確認するときは本物のキー入力で OK を押します

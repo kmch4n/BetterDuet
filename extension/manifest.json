@@ -23,7 +23,7 @@
         },
         {
             "matches": ["https://duet.doshisha.ac.jp/gakusei/html/*"],
-            "js": ["core.js", "content/notice.js", "content/nav.js", "content/page.js"],
+            "js": ["core.js", "content/notice.js", "content/nav.js", "content/page.js", "content/links.js"],
             "css": ["content/tokens.css", "content/notice.css"],
             "run_at": "document_start"
         },

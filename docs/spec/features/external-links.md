@@ -1,6 +1,6 @@
 # 外部リンクを新しいタブで開く
 
-- 状態: Accepted
+- 状態: Implemented
 - 要件 ID の接頭辞: `LINK`
 - 最終更新: 2026-10-19
 
@@ -22,14 +22,14 @@ BetterDuet は、これらのリンクを普通のリンクに書き換え、ど
 
 ### LINK-001 openUrl のリンクを普通のリンクにする
 
-- 状態: Accepted
+- 状態: Implemented
 - 優先度: 必須
 
 DUET の画面の `<a>` のうち、`onclick` が `return openUrl(…)` の形で、引数から開く URL を読み取れるものを、次のように書き換える。
 
 - `href` を開く URL にする
 - `target="_blank"`、`rel="noopener noreferrer"` にする
-- `onclick` を外し、DUET の `openUrl` を動かさない
+- `onclick` を外し、DUET の `openUrl` を動かさない。拡張機能の側から `onclick` 属性を外しても、DUET のページがすでに作った処理は残るため、書き換えたリンクのクリックは捕捉フェーズで止めて、DUET の処理まで届かないようにする。リンク本来の動き（新しいタブで開く）は止めない
 
 開く URL は、`onclick` の引数の形に応じて読み取る（E-036）。
 
@@ -48,7 +48,7 @@ DUET の画面の `<a>` のうち、`onclick` が `return openUrl(…)` の形�
 
 ### LINK-002 読み取れないリンクには手を加えない
 
-- 状態: Accepted
+- 状態: Implemented
 - 優先度: 必須
 
 次のどれかに当たるリンクは、書き換えずに DUET 本来の動き（別ウィンドウ）に任せる（P-5）。
@@ -67,4 +67,11 @@ DUET の画面の `<a>` のうち、`onclick` が `return openUrl(…)` の形�
 
 ## 確認の記録
 
-（Implemented にするときに書く）
+2026-10-19 に、Chrome 155 に `extension/` を読み込み、実際の DUET で確認しました。`node --test tests/*.test.js` もすべて通っています。
+
+| 要件 | 確認方法 |
+|---|---|
+| LINK-001 | 実機：メッセージ詳細の「参照URL」を本物のマウスで押すと、Panopto が同じウィンドウの新しいタブで開き、ウィンドウは増えなかった。右クリックの「新しいタブで開く」でも Panopto が開き、元のタブの「戻る」ボタンは止められずにメッセージ一覧へ戻った。マニュアルの画面では11件のリンクがすべて書き換わり、PDF が新しいタブで開いた。テスト：`tests/links.test.js`、`tests/core.test.js` |
+| LINK-002 | テスト：`tests/core.test.js`（形の違う `onclick`、`http(s)` でない値、DUET 自身の URL を対象にしない）、`tests/links.test.js`（読み取れないリンクは `href` と `onclick` がそのまま） |
+
+最初の実装は `onclick` 属性を外すだけで、実機では Panopto が別ウィンドウで開いたままでした。ページの側から見ると `a.onclick` に DUET の処理が残っていたためで、クリックを捕捉フェーズで止めるように直しました。

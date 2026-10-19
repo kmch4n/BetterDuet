@@ -367,3 +367,59 @@ test("CORE-008 timeouts and paths match the plan", () => {
     assert.equal(core.ENTRY_PATH, "/gakusei/html/" + core.ENTRY_FROM);
     assert.equal(core.screenIdFromAction(core.ENTRY_PATH), core.ENTRY_SCREEN);
 });
+
+test("LINK-001 openUrlSource reads the three argument shapes DUET uses", () => {
+    assert.deepEqual(
+        { ...core.openUrlSource("return openUrl($('#sansyoUrlZ1').val());") },
+        { kind: "id", key: "sansyoUrlZ1" },
+    );
+    assert.deepEqual(
+        { ...core.openUrlSource("return openUrl($('.linkUrl10').html())") },
+        { kind: "class", key: "linkUrl10" },
+    );
+    assert.deepEqual(
+        { ...core.openUrlSource("return openUrl('https://example.com/a.pdf');") },
+        {
+            kind: "literal",
+            key: "https://example.com/a.pdf",
+        },
+    );
+    assert.deepEqual(
+        { ...core.openUrlSource('return openUrl("https://example.com/b");') },
+        {
+            kind: "literal",
+            key: "https://example.com/b",
+        },
+    );
+});
+
+test("LINK-002 openUrlSource leaves other onclick handlers alone", () => {
+    assert.equal(core.openUrlSource(null), null);
+    assert.equal(core.openUrlSource(""), null);
+    assert.equal(core.openUrlSource("return callSyllabusInfo('2026', '12345');"), null);
+    assert.equal(core.openUrlSource("return openUrl(someVariable);"), null);
+    assert.equal(core.openUrlSource("return openUrlWithWindowName($('#a').val(), 'w');"), null);
+    assert.equal(core.openUrlSource("doSomething(); return openUrl($('#a').val());"), null);
+});
+
+test("LINK-001 externalLinkHref accepts http(s) URLs on other hosts", () => {
+    assert.equal(
+        core.externalLinkHref(" https://doshisha.ap.panopto.com/Panopto/Pages/Viewer.aspx?id=abc "),
+        "https://doshisha.ap.panopto.com/Panopto/Pages/Viewer.aspx?id=abc",
+    );
+    assert.equal(
+        core.externalLinkHref("http://duet-man.doshisha.ac.jp/manual/a.pdf"),
+        "http://duet-man.doshisha.ac.jp/manual/a.pdf",
+    );
+});
+
+test("LINK-002 externalLinkHref rejects non-http(s), malformed and DUET URLs", () => {
+    assert.equal(core.externalLinkHref(""), null);
+    assert.equal(core.externalLinkHref(null), null);
+    assert.equal(core.externalLinkHref("javascript:alert(1)"), null);
+    assert.equal(core.externalLinkHref("ftp://example.com/a"), null);
+    assert.equal(core.externalLinkHref("/gakusei/html/fb/fb020/FB02001G.html"), null);
+    assert.equal(core.externalLinkHref("https://"), null);
+    assert.equal(core.externalLinkHref("https://duet.doshisha.ac.jp/gakusei/html/fb/fb020/FB02001G.html"), null);
+    assert.equal(core.externalLinkHref("HTTPS://DUET.DOSHISHA.AC.JP/x"), null);
+});
