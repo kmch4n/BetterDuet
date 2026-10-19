@@ -68,7 +68,7 @@ DUET のページは、ブラウザの再読み込みでセッションが切れ
 
 - コンテンツスクリプトは素の JavaScript で書き、IIFE で囲んでほかのスクリプトと干渉しないようにする
 - コード中の識別子とコメントは英語、利用者に見える文言とドキュメント・仕様書は日本語にする
-- インデントは 4 スペース。Prettier を使う場合は、リポジトリの `.prettierrc` の設定に従う
+- インデントは 4 スペース、1行は120桁まで。書式は Prettier 3.3.3 とリポジトリの `.prettierrc` でそろえ、CI でも確かめる
 - DUET の HTML は予告なく変わるため、セレクタは狭く指定し、要素が見つからないときも壊れないようにする
 - 画面に追加する要素は、初期化が何度走っても重複しないようにする
 - 画面に追加する要素の見た目は DUET にそろえる。色や大きさは `extension/content/tokens.css` のトークンを使い、直接の値を書かない（仕様書の NOTICE-002）
@@ -88,9 +88,12 @@ node --test tests/*.test.js
 
 # 変更した JavaScript の構文チェック
 node --check extension/path/to/changed-file.js
+
+# 書式（直すときは --check を --write にする）
+npx --yes prettier@3.3.3 --check "extension/**/*.{js,json,css}" "tests/**/*.js"
 ```
 
-同じ確認は、`main` への push と Pull Request のたびに GitHub Actions（`.github/workflows/test.yml`）でも実行されます。CI が確かめるのは、テスト、すべての JavaScript の構文、`manifest.json` と `rules.json` の JSON の構文です。
+同じ確認は、`main` への push と Pull Request のたびに GitHub Actions（`.github/workflows/test.yml`）でも実行されます。CI が確かめるのは、テスト、すべての JavaScript の構文、Prettier の書式、`manifest.json` と `rules.json` の JSON の構文です。
 
 あわせて、変更が関係する DUET の画面で実際に動かして確かめてください。複数のタブを開いた状態も確認対象です。
 

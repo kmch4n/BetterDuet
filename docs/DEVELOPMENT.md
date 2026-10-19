@@ -18,7 +18,14 @@ node --test tests/*.test.js
 for f in extension/*.js extension/content/*.js; do node --check "$f"; done
 ```
 
-GitHub Actions（`.github/workflows/test.yml`）も、`main` への push と Pull Request のたびに、テスト、構文、`manifest.json` と `rules.json` の JSON を確かめます。Prettier による書式の確認は、`.prettierrc` と今のコードの書式が合っていないため、まだ入れていません（#8）。
+書式は Prettier 3.3.3 でそろえています（`.prettierrc`：120桁、インデント4）。`package.json` は作らず、`npx` でバージョンを固定して実行します。
+
+```bash
+npx --yes prettier@3.3.3 --check "extension/**/*.{js,json,css}" "tests/**/*.js"
+# 直すときは --check を --write にする
+```
+
+GitHub Actions（`.github/workflows/test.yml`）も、`main` への push と Pull Request のたびに、テスト、構文、書式、`manifest.json` と `rules.json` の JSON を確かめます。
 
 | テスト | 対象 |
 |---|---|

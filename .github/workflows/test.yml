@@ -23,6 +23,8 @@ jobs:
                   for f in extension/*.js extension/content/*.js tests/*.js; do
                       node --check "$f"
                   done
+            - name: Formatting
+              run: npx --yes prettier@3.3.3 --check "extension/**/*.{js,json,css}" "tests/**/*.js"
             - name: JSON syntax
               run: |
                   for f in extension/manifest.json extension/rules.json; do
