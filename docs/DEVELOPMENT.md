@@ -86,6 +86,9 @@ pwsh tools/chrome-ext.ps1 -Action disable -Name "BetterDuet Probe"
 - **DUET はボタンの上の Enter を自分で処理する**：LOGOUT ボタンに `focus()` して Enter を送っても押されない。ボタンは本物のマウスで押し、確認ダイアログの OK だけを Enter で押す
 - **どのタブが前面かは `visibilityState` では分からない**：Claude in Chrome のタブグループのタブは、裏にあっても `visible` を返すことがある。`requestAnimationFrame` の1秒あたりの回数（前面は約60、裏は約30）で見分ける。UI Automation でタブを選ぶときは、Claude in Chrome がタブを作った直後だと、そのタブがまだ選ばれていないことがある
 - **「デバッグを開始しました」の帯が消えると、ページの位置がずれる**：画面の座標でクリックするときは、直前に撮った画面で位置を確かめる
+- **SSO 切れ（GUARD-004）は、DUET 側の Shibboleth のログインだけを切って作れる**：LOGOUT のあと、DUET のページで `fetch('/Shibboleth.sso/Logout', { credentials: 'include', redirect: 'manual' })` を呼ぶ。大学の SSO（ex-tic）のログインは残るので、パスワードを入れ直さずに SSO の往復を確かめられる（E-035）。ex-tic まで切れるとパスワードが要るので、利用者がいるときに行う
+- **`chrome://restart` は、最後に使ったプロフィールのウィンドウしか開き直さないことがある**：Univ のプロフィール（`Profile 1`）は、`chrome.exe --profile-directory="Profile 1" --restore-last-session` で前回のタブごと開き直せる（E-034）。再起動のあと、Claude in Chrome は再起動の前に作ったタブグループを操作できない
+- **DevTools のコンソールには、自動操作の文字入力が届かないことがある**：2026-10-19 は `SendKeys` で入力しても何も入らなかった。ページの中の値は、なるべく Claude in Chrome の JavaScript 実行で読む
 - **セッションを壊す実験は、拡張機能を使わずに行える**：`fetch` で DUET のページを GET すると、セッションが壊れる（遮断ルールは `main_frame` しか対象にしないため）
 
 ### DUET の見た目を測り直す
