@@ -385,3 +385,13 @@ Chrome 155、BetterDuet を有効にした状態。DUET のタブで LOGOUT を�
 - 直後に入場ページを `fetch`（`redirect: 'manual'`）すると、`opaqueredirect` になった。GUARD-003 の `fetch` から見ると「SSO 切れ」の状態
 - 同じタブのアドレスバーから入場ページを開くと、着地ページ → `FB01090G.html?betterduet=sso` と移り、ex-tic を往復して（ログインは残っていたので、画面は出なかった）、DUET の入場ページが開いた。そこから「DUETホーム画面へ」とサイドメニューの操作も普通にできた
 - ex-tic のログインまで切れた場合は試していない（パスワードの入力が要るため）
+
+### E-036 openUrl のリンクと「新しいタブで開く」（2026-10-19）
+
+Chrome 155、BetterDuet を有効にした状態。
+
+- メッセージ詳細（`FB03002G`）の「参照URL」は `<a href="?newwindow=true#" target="_blank" onclick="return openUrl($('#sansyoUrlZ1').val());">` で、開く URL は隣の隠し入力欄 `form1:sansyoUrlZ1` の値にある
+- マニュアル（`FB01501G`）の PDF のリンクは `onclick="return openUrl($('.linkUrl0').html())"` で、URL は非表示の `span.linkUrl0` の文字にある（開く先は `duet-man.doshisha.ac.jp`）
+- `openUrl(url)` は `openUrlWithWindowName(url, "popupWindow_" + window.name)` を呼ぶ。`http://` か `https://` で始まらなければ「無効なURLです」と出して開かない。開くときは `window.open(url, 名前, "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,copyhistory=yes")` なので、ツールバーのない別ウィンドウになる
+- 「参照URL」を右クリックして「新しいタブで開く」を押すと、新しいタブは `href` を今の画面の URL に足した `…/FB03001G.html?newwindow=true` への GET になった。BetterDuet が着地ページに付け替え、新しいタブには記録がないためホームを開いた。元のタブ（メッセージ詳細）は古い画面になった
+- BetterDuet がなければ、この GET は DUET に届き、E-002 と同じくセッションが壊れると考えられる（今回は拡張機能を切っての再現はしていない）

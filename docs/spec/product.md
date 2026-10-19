@@ -15,15 +15,16 @@ DUET のサーバーは、セッションごとに「現在の画面」を1つ�
 - 対象のブラウザ：Google Chrome 111 以降（Manifest V3。理由は [architecture.md](architecture.md) の CORE-009）
 - 対象の利用者：DUET を使う同志社大学の学生
 
-## 最初のリリースに含める機能
+## 含める機能
 
 | 機能 | 仕様 | できるようになること |
 |---|---|---|
 | 複数タブでの利用 | [features/multi-tab.md](features/multi-tab.md) | タブの複製や SSO ポータルから、DUET のタブを増やして行き来できる |
 | セッションの保護と復帰 | [features/session-guard.md](features/session-guard.md) | 再読み込みや休止したタブへの切り替えで壊れない。壊れても SSO ポータルを通らずに戻れる |
 | ブラウザの「戻る」 | [features/back-navigation.md](features/back-navigation.md) | 「戻る」で1つ前の画面に戻れる |
+| 外部リンクを新しいタブで開く | [features/external-links.md](features/external-links.md) | 参照URLやマニュアルの PDF が、別ウィンドウではなく新しいタブで開く。右クリックの「新しいタブで開く」でも壊れない（v0.3.0 で追加） |
 
-3つの機能は、[architecture.md](architecture.md) の共通の仕組み（最新の画面の記録と、送信の一本化）の上に作ります。
+最初の3つの機能は、[architecture.md](architecture.md) の共通の仕組み（最新の画面の記録と、送信の一本化）の上に作ります。外部リンクの機能は、画面のリンクを書き換えるだけで、DUET には何も送りません。
 
 ## 全機能に共通する原則
 
