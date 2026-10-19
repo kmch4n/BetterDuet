@@ -33,6 +33,10 @@ test("CORE-008: the DNR rule resource is rules.json", () => {
     assert.equal(resources[0].path, "rules.json");
 });
 
+test("CORE-009: the manifest requires Chrome 111, the first version with MAIN-world content scripts", () => {
+    assert.equal(manifest.minimum_chrome_version, "111");
+});
+
 test("CORE-008: MAIN-world entry runs at document_start on /gakusei/html/* only", () => {
     const mains = manifest.content_scripts.filter((cs) => cs.world === "MAIN");
     assert.equal(mains.length, 1);

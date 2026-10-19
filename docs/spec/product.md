@@ -12,7 +12,7 @@ DUET のサーバーは、セッションごとに「現在の画面」を1つ�
 ## 対象
 
 - 対象のサイト：`https://duet.doshisha.ac.jp/gakusei/` 以下（学生向け画面）
-- 対象のブラウザ：Google Chrome（Manifest V3）
+- 対象のブラウザ：Google Chrome 111 以降（Manifest V3。理由は [architecture.md](architecture.md) の CORE-009）
 - 対象の利用者：DUET を使う同志社大学の学生
 
 ## 最初のリリースに含める機能

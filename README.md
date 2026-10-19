@@ -67,7 +67,7 @@ DUET では「戻る」を押すと「ブラウザの『戻る』ボタンは利
 
 ## インストール
 
-BetterDuet は [GitHub Releases](https://github.com/kmch4n/BetterDuet/releases) で配布しています。Chrome の「パッケージ化されていない拡張機能」として読み込んで使います。
+BetterDuet は [GitHub Releases](https://github.com/kmch4n/BetterDuet/releases) で配布しています。Chrome の「パッケージ化されていない拡張機能」として読み込んで使います。Chrome 111 以降が必要です。
 
 1. [最新リリース](https://github.com/kmch4n/BetterDuet/releases/latest)から `BetterDuet_vX.Y.Z.zip` をダウンロードする
 2. zip を展開し、中身を置いておくフォルダ（例: `ドキュメント\BetterDuet`）に移す

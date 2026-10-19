@@ -151,7 +151,7 @@ E-018 の範囲では、ログアウト以外に Ajax で DUET に送る操作�
 
 ### CORE-009 対応する Chrome の最低バージョン
 
-- 状態: Draft
+- 状態: Implemented
 - 優先度: 推奨
 
 `manifest.json` に `"minimum_chrome_version": "111"` を書き、それより古い Chrome には入れられないようにする。
@@ -162,7 +162,7 @@ E-018 の範囲では、ログアウト以外に Ajax で DUET に送る操作�
 - `manifest.json` に `minimum_chrome_version` が `"111"` で書かれている（`tests/manifest.test.js` で確かめる）
 - README の導入手順に、Chrome 111 以降が必要と書かれている
 
-（Issue #6。メンテナーが確認して `Accepted` にするまで実装しない）
+2026-10-19 にメンテナーが承認した（Issue #6）。
 
 ## お知らせ帯
 
@@ -230,5 +230,6 @@ E-018 の範囲では、ログアウト以外に Ajax で DUET に送る操作�
 | CORE-006 | 実機：LOGOUT でログアウトしたあと、別のタブでメニューを押すと NOTICE-TAB-2 で止まった（ログアウトの XHR を、記録が済むまで最大 0.5 秒待たせる方式）。テスト：`tests/early-hook.test.js` |
 | CORE-007 | コード監査：ポップアップの関数には手を加えていない |
 | CORE-008 | テスト：`tests/manifest.test.js`（権限とホスト権限が仕様どおり） |
+| CORE-009 | テスト：`tests/manifest.test.js`（`minimum_chrome_version` が `"111"`）。実機：2026-10-19 に Chrome 155 で読み込み直し、エラーなく有効になった。README の導入手順に Chrome 111 以降が必要と書いた |
 | NOTICE-001 | 実機：帯は `#contents` の先頭に1つだけ出て、`role` が種類どおり。ボタンは `<button>` で、フォーカスして Enter で押せた |
 | NOTICE-002 | 実機：情報の帯（NOTICE-BACK-1）と注意の帯（NOTICE-TAB-1）を DUET のホームと授業評価アンケートの画面で表示し、隣の DUET のブロックと並べて見た目がそろっていることをスクリーンショットで確かめた |
